@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
+import '../anonymous_setup_screen.dart';
+import '../anonymous_feed_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -52,6 +54,24 @@ class _HomeTabState extends State<HomeTab> {
         _hasError = true;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _openAnonymous() async {
+    final token = await SessionService.getToken();
+    final response = await http.get(
+      Uri.parse('http://localhost:3000/anonymous/profile'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    final data = jsonDecode(response.body);
+    final hasProfile = data['success'] == true && data['profile'] != null;
+
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => hasProfile ? const AnonymousFeedScreen() : const AnonymousSetupScreen(),
+        ),
+      );
     }
   }
 
@@ -113,7 +133,7 @@ class _HomeTabState extends State<HomeTab> {
     final shortcuts = [
       {'icon': Icons.school_outlined, 'label': 'Education'},
       {'icon': Icons.storefront_outlined, 'label': 'Marketplace'},
-      {'icon': Icons.miscellaneous_services_outlined, 'label': 'Services'},
+      {'icon': Icons.masks_outlined, 'label': 'Anonymous'},
       {'icon': Icons.event_outlined, 'label': 'Events'},
     ];
     return GridView.count(
@@ -121,17 +141,20 @@ class _HomeTabState extends State<HomeTab> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: shortcuts.map((s) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-              child: Icon(s['icon'] as IconData, color: AppColors.primary),
-            ),
-            const SizedBox(height: 6),
-            Text(s['label'] as String, style: const TextStyle(fontSize: 11)),
-          ],
+        return GestureDetector(
+          onTap: s['label'] == 'Anonymous' ? _openAnonymous : null,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                child: Icon(s['icon'] as IconData, color: AppColors.primary),
+              ),
+              const SizedBox(height: 6),
+              Text(s['label'] as String, style: const TextStyle(fontSize: 11)),
+            ],
+          ),
         );
       }).toList(),
     );

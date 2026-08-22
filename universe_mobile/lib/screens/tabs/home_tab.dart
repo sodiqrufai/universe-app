@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
 import '../anonymous_setup_screen.dart';
 import '../anonymous_feed_screen.dart';
+import '../marketplace_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -142,7 +143,12 @@ class _HomeTabState extends State<HomeTab> {
       physics: const NeverScrollableScrollPhysics(),
       children: shortcuts.map((s) {
         return GestureDetector(
-          onTap: s['label'] == 'Anonymous' ? _openAnonymous : null,
+          onTap: () {
+            if (s['label'] == 'Anonymous') _openAnonymous();
+            if (s['label'] == 'Marketplace') {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketplaceScreen()));
+            }
+          },
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

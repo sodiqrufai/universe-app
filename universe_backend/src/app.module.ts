@@ -11,13 +11,14 @@ import { HomeController } from './home/home.controller';
 import { PostsController } from './posts/posts.controller';
 import { AnonymousController } from './anonymous/anonymous.controller';
 import { EducationController } from './education/education.controller';
+import { MarketplaceController } from './marketplace/marketplace.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
   ],
-  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController],
+  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController],
   providers: [AppService],
 })
 export class AppModule {}

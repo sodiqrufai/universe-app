@@ -1,0 +1,20 @@
+# Environment secrets
+**/.env
+**/.env.local
+
+# Dependencies
+**/node_modules/
+
+# Flutter build output
+**/build/
+**/.dart_tool/
+
+# Next.js build output
+**/.next/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/

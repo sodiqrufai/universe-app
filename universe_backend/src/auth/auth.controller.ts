@@ -1,0 +1,80 @@
+import { Body, Controller, Post } from '@nestjs/common';
+import { SupabaseService } from '../supabase/supabase.service';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly supabase: SupabaseService) {}
+
+  @Post('register')
+  async register(@Body() body: { email: string; password: string }) {
+    const { data, error } = await this.supabase.client.auth.signUp({
+      email: body.email,
+      password: body.password,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    if (!data.session) {
+      return { success: false, error: 'This email is already registered. Please log in instead.' };
+    }
+
+    await this.supabase.client.from('profiles').insert({
+      id: data.user!.id,
+    });
+
+    return {
+      success: true,
+      userId: data.user?.id,
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+    };
+  }
+
+  @Post('login')
+  async login(@Body() body: { email: string; password: string }) {
+    const { data, error } = await this.supabase.client.auth.signInWithPassword({
+      email: body.email,
+      password: body.password,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      userId: data.user?.id,
+      accessToken: data.session?.access_token,
+      refreshToken: data.session?.refresh_token,
+    };
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: { refreshToken: string }) {
+    const { data, error } = await this.supabase.client.auth.refreshSession({
+      refresh_token: body.refreshToken,
+    });
+
+    if (error || !data.session) {
+      return { success: false, error: error?.message ?? 'Refresh failed' };
+    }
+
+    return {
+      success: true,
+      accessToken: data.session.access_token,
+      refreshToken: data.session.refresh_token,
+    };
+  }
+
+    @Post('reset-password')
+  async resetPassword(@Body() body: { email: string }) {
+    const { error } = await this.supabase.client.auth.resetPasswordForEmail(body.email);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+}

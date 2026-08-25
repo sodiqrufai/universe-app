@@ -6,9 +6,11 @@ import '../../services/session_service.dart';
 import '../anonymous_setup_screen.dart';
 import '../anonymous_feed_screen.dart';
 import '../marketplace_screen.dart';
+import '../events_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key});
+  final VoidCallback? onGoToEducation;
+  const HomeTab({super.key, this.onGoToEducation});
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -144,9 +146,15 @@ class _HomeTabState extends State<HomeTab> {
       children: shortcuts.map((s) {
         return GestureDetector(
           onTap: () {
-            if (s['label'] == 'Anonymous') _openAnonymous();
-            if (s['label'] == 'Marketplace') {
+            final label = s['label'];
+            if (label == 'Anonymous') {
+              _openAnonymous();
+            } else if (label == 'Marketplace') {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketplaceScreen()));
+            } else if (label == 'Events') {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EventsScreen()));
+            } else if (label == 'Education') {
+              widget.onGoToEducation?.call();
             }
           },
           child: Column(

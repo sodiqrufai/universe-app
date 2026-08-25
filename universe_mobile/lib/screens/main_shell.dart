@@ -16,12 +16,12 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  final _tabs = const [
-    HomeTab(),
-    EducationTab(),
-    ServicesTab(),
-    CampusFeedTab(),
-    ProfileTab(),
+  late final List<Widget> _tabs = [
+    HomeTab(onGoToEducation: () => setState(() => _currentIndex = 1)),
+    const EducationTab(),
+    const ServicesTab(),
+    const CampusFeedTab(),
+    const ProfileTab(),
   ];
 
   final _titles = const ['UniVerse', 'Education', 'Services', 'Campus Feed', 'Profile'];

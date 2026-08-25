@@ -16,12 +16,18 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   Map<String, dynamic>? _listing;
   bool _loading = true;
   String? _myUserId;
+  List<dynamic> _offers = [];
+  bool _loadingOffers = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserId();
-    _fetchListing();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadUserId();
+    await _fetchListing();
   }
 
   Future<void> _loadUserId() async {
@@ -43,10 +49,54 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         _listing = data['listing'];
         _loading = false;
       });
+      if (_listing != null && _listing!['seller_id'] == _myUserId) {
+        _fetchOffers();
+      }
     } catch (e) {
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _fetchOffers() async {
+    setState(() {
+      _loadingOffers = true;
+    });
+    final token = await SessionService.getToken();
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}/offers'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      final data = jsonDecode(response.body);
+      setState(() {
+        _offers = data['offers'] ?? [];
+        _loadingOffers = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingOffers = false;
+      });
+    }
+  }
+
+  Future<void> _respondToOffer(String offerId, String status) async {
+    final token = await SessionService.getToken();
+    final response = await http.patch(
+      Uri.parse('http://localhost:3000/marketplace/offers/$offerId'),
+      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      body: jsonEncode({'status': status}),
+    );
+    final data = jsonDecode(response.body);
+    if (data['success'] == true) {
+      _fetchOffers();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Failed to respond (status ${response.statusCode})')),
+        );
+      }
     }
   }
 
@@ -226,6 +276,41 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     onPressed: _makeOffer,
                     child: const Text('Make an Offer'),
                   ),
+                if (isMine) ...[
+                  const Divider(height: 32),
+                  const Text('Offers Received', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 12),
+                  if (_loadingOffers)
+                    const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  else if (_offers.isEmpty)
+                    const Text('No offers yet', style: TextStyle(color: Colors.black54))
+                  else
+                    ..._offers.map((o) {
+                      final buyer = o['profiles'];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text('₦${o['amount']} from ${buyer?['full_name'] ?? 'Buyer'}'),
+                          subtitle: Text(o['status']),
+                          trailing: o['status'] == 'pending'
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.check, color: AppColors.success),
+                                      onPressed: () => _respondToOffer(o['id'], 'accepted'),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.red),
+                                      onPressed: () => _respondToOffer(o['id'], 'rejected'),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                      );
+                    }),
+                ],
               ],
             ),
           ),

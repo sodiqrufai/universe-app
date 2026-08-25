@@ -137,17 +137,27 @@ export class MarketplaceController {
 
     if (error) return { success: false, error: error.message };
 
+    console.log('Files received:', files?.length ?? 0);
+
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const filePath = `${user.id}/${listing.id}/${Date.now()}-${i}.jpg`;
         const { error: uploadError } = await this.supabase.client.storage
           .from('listing-images')
           .upload(filePath, files[i].buffer, { contentType: files[i].mimetype });
-        if (!uploadError) {
-          const { data: urlData } = this.supabase.client.storage.from('listing-images').getPublicUrl(filePath);
-          await this.supabase.client
-            .from('listing_images')
-            .insert({ listing_id: listing.id, image_url: urlData.publicUrl, sort_order: i });
+
+        if (uploadError) {
+          console.error('Listing image upload error:', uploadError);
+          continue;
+        }
+
+        const { data: urlData } = this.supabase.client.storage.from('listing-images').getPublicUrl(filePath);
+        const { error: insertError } = await this.supabase.client
+          .from('listing_images')
+          .insert({ listing_id: listing.id, image_url: urlData.publicUrl, sort_order: i });
+
+        if (insertError) {
+          console.error('Listing image DB insert error:', insertError);
         }
       }
     }
@@ -234,22 +244,40 @@ export class MarketplaceController {
       return { success: false, error: 'Invalid status' };
     }
 
-    const { data: offer } = await this.supabase.client
+        const { data: offer } = await this.supabase.client
       .from('offers')
-      .select('listing_id, listings(seller_id)')
+      .select('listing_id')
       .eq('id', id)
       .single();
 
-    if (!offer || (offer.listings as any)?.seller_id !== user.id) {
+    if (!offer) {
+      return { success: false, error: 'Offer not found' };
+    }
+
+    const { data: listing } = await this.supabase.client
+      .from('listings')
+      .select('seller_id')
+      .eq('id', offer.listing_id)
+      .single();
+
+    console.log('Offer check — listing.seller_id:', listing?.seller_id, 'user.id:', user.id);
+
+    if (!listing || listing.seller_id !== user.id) {
       return { success: false, error: 'You are not the seller of this listing' };
     }
 
-    const { error } = await this.supabase.client
+    const { data: updated, error } = await this.supabase.client
       .from('offers')
       .update({ status: body.status })
-      .eq('id', id);
+      .eq('id', id)
+      .select();
+
+    console.log('Update result — updated:', updated, 'error:', error);
 
     if (error) return { success: false, error: error.message };
+    if (!updated || updated.length === 0) {
+      return { success: false, error: 'No offer was updated — check the ID' };
+    }
     return { success: true };
   }
 

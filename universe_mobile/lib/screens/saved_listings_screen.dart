@@ -52,7 +52,7 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: _listings.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final l = _listings[index];
                     final images = l['listing_images'] as List<dynamic>? ?? [];

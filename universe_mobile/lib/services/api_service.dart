@@ -55,6 +55,35 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
+    final token = await SessionService.getToken();
+    final response = await http.post(
+      Uri.parse('$_baseUrl$path'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final newToken = await SessionService.getToken();
+        final retry = await http.post(
+          Uri.parse('$_baseUrl$path'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $newToken',
+          },
+          body: jsonEncode(body),
+        );
+        return jsonDecode(retry.body);
+      }
+    }
+    return jsonDecode(response.body);
+  }
+
   static Future<bool> _tryRefresh() async {
     final refreshToken = await SessionService.getRefreshToken();
     if (refreshToken == null) return false;

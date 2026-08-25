@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
+import 'chat_detail_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final dynamic post;
@@ -70,6 +72,28 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           _sending = false;
         });
       }
+    }
+  }
+
+  Future<void> _messageAuthor() async {
+    final authorId = widget.post['author_id'];
+    if (authorId == null) return;
+
+    final data = await ApiService.post('/chat/direct', {'otherUserId': authorId});
+    if (data['success'] == true && mounted) {
+      final profile = widget.post['profiles'];
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            conversationId: data['conversationId'],
+            title: profile?['full_name'] ?? 'Chat',
+          ),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+      );
     }
   }
 
@@ -177,7 +201,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       child: avatarUrl == null ? const Icon(Icons.person, size: 18, color: AppColors.primary) : null,
                     ),
                     const SizedBox(width: 10),
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600))),
+                    TextButton.icon(
+                      onPressed: _messageAuthor,
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text('Message'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),

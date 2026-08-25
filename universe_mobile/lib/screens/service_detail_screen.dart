@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
+import 'chat_detail_screen.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   final String serviceId;
@@ -188,7 +190,13 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       child: profile?['avatar_url'] == null ? const Icon(Icons.person, size: 16, color: AppColors.primary) : null,
                     ),
                     const SizedBox(width: 8),
-                    Text(profile?['full_name'] ?? 'Provider', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(profile?['full_name'] ?? 'Provider', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    if (!isMine)
+                      TextButton.icon(
+                        onPressed: _messageProvider,
+                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                        label: const Text('Message'),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -200,5 +208,27 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _messageProvider() async {
+    final providerId = _service!['provider_id'];
+    if (providerId == null) return;
+
+    final data = await ApiService.post('/chat/direct', {'otherUserId': providerId});
+    if (data['success'] == true && mounted) {
+      final profile = _service!['profiles'];
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            conversationId: data['conversationId'],
+            title: profile?['full_name'] ?? 'Chat',
+          ),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+      );
+    }
   }
 }

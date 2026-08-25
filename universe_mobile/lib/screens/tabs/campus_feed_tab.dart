@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
+import '../chat_inbox_screen.dart';
 
 class CampusFeedTab extends StatefulWidget {
   const CampusFeedTab({super.key});
@@ -73,6 +74,17 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Campus Feed'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChatInboxScreen()));
+            },
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _hasError

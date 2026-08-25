@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
+import 'chat_detail_screen.dart';
 
 class ListingDetailScreen extends StatefulWidget {
   final String listingId;
@@ -267,7 +269,13 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                       child: profile?['avatar_url'] == null ? const Icon(Icons.person, size: 16, color: AppColors.primary) : null,
                     ),
                     const SizedBox(width: 8),
-                    Text(profile?['full_name'] ?? 'Seller', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(profile?['full_name'] ?? 'Seller', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    if (!isMine)
+                      TextButton.icon(
+                        onPressed: _messageSeller,
+                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                        label: const Text('Message'),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -317,5 +325,27 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _messageSeller() async {
+    final sellerId = _listing!['seller_id'];
+    if (sellerId == null) return;
+
+    final data = await ApiService.post('/chat/direct', {'otherUserId': sellerId});
+    if (data['success'] == true && mounted) {
+      final profile = _listing!['profiles'];
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatDetailScreen(
+            conversationId: data['conversationId'],
+            title: profile?['full_name'] ?? 'Chat',
+          ),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+      );
+    }
   }
 }

@@ -15,13 +15,15 @@ import { MarketplaceController } from './marketplace/marketplace.controller';
 import { ServicesController } from './services/services.controller';
 import { EventsController } from './events/events.controller';
 import { ChatController } from './chat/chat.controller';
+import { NotificationsController } from './notifications/notifications.controller';
+import { NotificationsService } from './notifications/notifications.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
   ],
-  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController, ServicesController, EventsController, ChatController],
-  providers: [AppService],
+  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController, ServicesController, EventsController, ChatController, NotificationsController],
+  providers: [AppService, NotificationsService],
 })
 export class AppModule {}

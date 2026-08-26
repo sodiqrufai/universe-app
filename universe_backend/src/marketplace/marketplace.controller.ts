@@ -1,10 +1,14 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UnauthorizedException, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('marketplace')
 export class MarketplaceController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private async getUserFromToken(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
@@ -137,8 +141,7 @@ export class MarketplaceController {
 
     if (error) return { success: false, error: error.message };
 
-    console.log('Files received:', files?.length ?? 0);
-
+    console.log('Listing images received:', files?.length ?? 0);
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const filePath = `${user.id}/${listing.id}/${Date.now()}-${i}.jpg`;
@@ -215,6 +218,23 @@ export class MarketplaceController {
       .single();
 
     if (error) return { success: false, error: error.message };
+
+    const { data: listing } = await this.supabase.client
+      .from('listings')
+      .select('seller_id, title')
+      .eq('id', id)
+      .single();
+
+    if (listing) {
+      await this.notifications.create(
+        listing.seller_id,
+        'new_offer',
+        'New offer received',
+        `Someone offered ₦${body.amount} on "${listing.title}"`,
+        { listingId: id },
+      );
+    }
+
     return { success: true, offer: data };
   }
 
@@ -244,7 +264,7 @@ export class MarketplaceController {
       return { success: false, error: 'Invalid status' };
     }
 
-        const { data: offer } = await this.supabase.client
+    const { data: offer } = await this.supabase.client
       .from('offers')
       .select('listing_id')
       .eq('id', id)
@@ -260,8 +280,6 @@ export class MarketplaceController {
       .eq('id', offer.listing_id)
       .single();
 
-    console.log('Offer check — listing.seller_id:', listing?.seller_id, 'user.id:', user.id);
-
     if (!listing || listing.seller_id !== user.id) {
       return { success: false, error: 'You are not the seller of this listing' };
     }
@@ -271,8 +289,6 @@ export class MarketplaceController {
       .update({ status: body.status })
       .eq('id', id)
       .select();
-
-    console.log('Update result — updated:', updated, 'error:', error);
 
     if (error) return { success: false, error: error.message };
     if (!updated || updated.length === 0) {

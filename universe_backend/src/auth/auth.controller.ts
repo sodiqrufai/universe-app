@@ -1,13 +1,25 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly config: ConfigService,
+  ) {}
+
+  private getAuthClient() {
+    return createClient(
+      this.config.get<string>('SUPABASE_URL')!,
+      this.config.get<string>('SUPABASE_ANON_KEY')!,
+    );
+  }
 
   @Post('register')
   async register(@Body() body: { email: string; password: string }) {
-    const { data, error } = await this.supabase.client.auth.signUp({
+    const { data, error } = await this.getAuthClient().auth.signUp({
       email: body.email,
       password: body.password,
     });
@@ -34,7 +46,7 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
-    const { data, error } = await this.supabase.client.auth.signInWithPassword({
+    const { data, error } = await this.getAuthClient().auth.signInWithPassword({
       email: body.email,
       password: body.password,
     });
@@ -53,7 +65,7 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Body() body: { refreshToken: string }) {
-    const { data, error } = await this.supabase.client.auth.refreshSession({
+    const { data, error } = await this.getAuthClient().auth.refreshSession({
       refresh_token: body.refreshToken,
     });
 
@@ -68,9 +80,9 @@ export class AuthController {
     };
   }
 
-    @Post('reset-password')
+  @Post('reset-password')
   async resetPassword(@Body() body: { email: string }) {
-    const { error } = await this.supabase.client.auth.resetPasswordForEmail(body.email);
+    const { error } = await this.getAuthClient().auth.resetPasswordForEmail(body.email);
 
     if (error) {
       return { success: false, error: error.message };

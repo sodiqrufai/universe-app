@@ -36,7 +36,8 @@ export class HomeController {
 
     return {
       success: true,
-            universityName: (profile?.universities as any)?.name ?? null,
+      universityName: (profile?.universities as any)?.name ?? null,
+      fullName: profile?.full_name ?? null,
       announcements: announcements ?? [],
     };
   }

@@ -1,9 +1,13 @@
 import { Body, Controller, Get, Headers, Param, Patch, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private async getAdminFromToken(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
@@ -104,6 +108,13 @@ export class AdminController {
       .update({ is_verified: true })
       .eq('id', verification.user_id);
 
+    await this.notifications.create(
+      verification.user_id,
+      'verification_approved',
+      'You are now verified! ✅',
+      'Your student status has been confirmed.',
+    );
+
     return { success: true };
   }
 
@@ -130,6 +141,13 @@ export class AdminController {
     if (!updated || updated.length === 0) {
       return { success: false, error: 'No verification record was updated — check the ID' };
     }
+
+    await this.notifications.create(
+      updated[0].user_id,
+      'verification_rejected',
+      'Verification needs another look',
+      body.reason,
+    );
 
     return { success: true };
   }

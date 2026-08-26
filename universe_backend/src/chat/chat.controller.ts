@@ -1,10 +1,14 @@
 import { Body, Controller, Delete, Get, Headers, Param, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private async getUserFromToken(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
@@ -18,7 +22,6 @@ export class ChatController {
     return data.user;
   }
 
-  // Find or create a 1:1 conversation with another user.
   @Post('direct')
   async startDirectConversation(
     @Headers('authorization') authHeader: string,
@@ -30,7 +33,6 @@ export class ChatController {
       return { success: false, error: 'Invalid recipient' };
     }
 
-    // Check if they've blocked each other.
     const { data: blocked } = await this.supabase.client
       .from('blocked_users')
       .select('id')
@@ -41,7 +43,6 @@ export class ChatController {
       return { success: false, error: 'Cannot start a conversation with this user' };
     }
 
-    // Find an existing direct conversation between these two exact users.
     const { data: myConvos } = await this.supabase.client
       .from('conversation_participants')
       .select('conversation_id')
@@ -62,7 +63,6 @@ export class ChatController {
       }
     }
 
-    // No existing direct conversation — create one.
     const { data: convo, error: convoError } = await this.supabase.client
       .from('conversations')
       .insert({ is_group: false, created_by: user.id })
@@ -253,6 +253,23 @@ export class ChatController {
       .update({ last_read_at: new Date().toISOString() })
       .eq('conversation_id', conversationId)
       .eq('user_id', user.id);
+
+    const { data: otherParticipants } = await this.supabase.client
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', conversationId)
+      .neq('user_id', user.id);
+
+    const senderName = (data.profiles as any)?.full_name ?? 'Someone';
+    for (const p of otherParticipants ?? []) {
+      await this.notifications.create(
+        p.user_id,
+        'chat_message',
+        senderName,
+        body.content?.trim() || '📎 Sent an attachment',
+        { conversationId },
+      );
+    }
 
     return { success: true, message: data };
   }

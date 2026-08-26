@@ -19,6 +19,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   List<dynamic> _announcements = [];
   String? _universityName;
+  String? _fullName;
   bool _loading = true;
   bool _hasError = false;
 
@@ -44,6 +45,7 @@ class _HomeTabState extends State<HomeTab> {
         setState(() {
           _announcements = data['announcements'];
           _universityName = data['universityName'];
+          _fullName = data['fullName'];
           _loading = false;
         });
       } else {
@@ -58,6 +60,13 @@ class _HomeTabState extends State<HomeTab> {
         _loading = false;
       });
     }
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   Future<void> _openAnonymous() async {
@@ -105,9 +114,13 @@ class _HomeTabState extends State<HomeTab> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text(
+            '${_greeting()}, ${_fullName?.split(' ').first ?? 'there'} 👋',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
           if (_universityName != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(top: 4, bottom: 16),
               child: Text(
                 _universityName!,
                 style: const TextStyle(fontSize: 14, color: Colors.black54),

@@ -5,7 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
 import '../create_service_screen.dart';
 import '../service_detail_screen.dart';
-import '../my_bookings_screen.dart';
+// import '../my_bookings_screen.dart';
 
 class ServicesTab extends StatefulWidget {
   const ServicesTab({super.key});
@@ -75,19 +75,6 @@ class _ServicesTabState extends State<ServicesTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Services'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.event_note_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-              );
-            },
-          ),
-        ],
-      ),
       body: Column(
         children: [
           Padding(

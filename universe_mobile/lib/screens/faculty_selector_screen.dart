@@ -27,7 +27,7 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
   Future<void> _fetchFaculties() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/faculties?universityId=${widget.universityId}'),
+        Uri.parse('${ApiConfig.baseUrl}/faculties?universityId=${widget.universityId}'),
       );
       setState(() {
         _faculties = jsonDecode(response.body);
@@ -45,7 +45,7 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.patch(
-        Uri.parse('http://localhost:3000/profile/update'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

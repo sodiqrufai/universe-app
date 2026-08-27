@@ -29,7 +29,7 @@ export default function DashboardPage() {
 
   const fetchPending = async (token: string) => {
     try {
-      const res = await fetch('http://localhost:3000/admin/verifications/pending', {
+      const res = await fetch('${ApiConfig.baseUrl}/admin/verifications/pending', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();

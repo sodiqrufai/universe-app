@@ -30,7 +30,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/posts/${widget.post['id']}/comments'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/comments'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -53,7 +53,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/posts/${widget.post['id']}/comments'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/comments'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -120,7 +120,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/posts/${widget.post['id']}/report'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/report'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -150,7 +150,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (confirm == true) {
       final token = await SessionService.getToken();
       await http.delete(
-        Uri.parse('http://localhost:3000/posts/${widget.post['id']}'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (mounted) Navigator.of(context).pop();

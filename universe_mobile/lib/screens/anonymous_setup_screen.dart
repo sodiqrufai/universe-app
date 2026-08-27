@@ -31,7 +31,7 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
     });
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/anonymous/profile/check-username'),
+        Uri.parse('${ApiConfig.baseUrl}/anonymous/profile/check-username'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'username': value.trim()}),
       );
@@ -57,7 +57,7 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/anonymous/profile'),
+        Uri.parse('${ApiConfig.baseUrl}/anonymous/profile'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

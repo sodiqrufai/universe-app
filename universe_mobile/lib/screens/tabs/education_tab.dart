@@ -31,7 +31,7 @@ class _EducationTabState extends State<EducationTab> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/education/courses'),
+        Uri.parse('${ApiConfig.baseUrl}/education/courses'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

@@ -32,7 +32,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/events/categories'));
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/events/categories'));
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -80,7 +80,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
     final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('http://localhost:3000/events'));
+      final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/events'));
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = _titleController.text.trim();
       request.fields['description'] = _descController.text.trim();

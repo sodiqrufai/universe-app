@@ -33,7 +33,7 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/posts/feed'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/feed'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -65,7 +65,7 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
     });
     try {
       await http.post(
-        Uri.parse('http://localhost:3000/posts/$postId/react'),
+        Uri.parse('${ApiConfig.baseUrl}/posts/$postId/react'),
         headers: {'Authorization': 'Bearer $token'},
       );
     } catch (_) {}

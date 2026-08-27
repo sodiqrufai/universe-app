@@ -44,7 +44,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/chat/${widget.conversationId}/messages'),
+        Uri.parse('${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -90,7 +90,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:3000/chat/${widget.conversationId}/messages'),
+        Uri.parse('${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages'),
       );
       request.headers['Authorization'] = 'Bearer $token';
       if (text.isNotEmpty) request.fields['content'] = text;
@@ -153,7 +153,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/chat/report'),
+        Uri.parse('${ApiConfig.baseUrl}/chat/report'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'conversationId': widget.conversationId, 'reason': reason}),
       );
@@ -181,7 +181,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (confirm == true) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/chat/block/$otherId'),
+        Uri.parse('${ApiConfig.baseUrl}/chat/block/$otherId'),
         headers: {'Authorization': 'Bearer $token'},
       );
       if (mounted) Navigator.of(context).pop();

@@ -43,7 +43,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -68,7 +68,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}/offers'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -86,7 +86,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   Future<void> _respondToOffer(String offerId, String status) async {
     final token = await SessionService.getToken();
     final response = await http.patch(
-      Uri.parse('http://localhost:3000/marketplace/offers/$offerId'),
+      Uri.parse('${ApiConfig.baseUrl}/marketplace/offers/$offerId'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'status': status}),
     );
@@ -105,7 +105,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   Future<void> _toggleSave() async {
     final token = await SessionService.getToken();
     await http.post(
-      Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}/save'),
+      Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/save'),
       headers: {'Authorization': 'Bearer $token'},
     );
     _fetchListing();
@@ -131,7 +131,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     if (confirmed == true && amountController.text.trim().isNotEmpty) {
       final token = await SessionService.getToken();
       final response = await http.post(
-        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}/offers'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'amount': amountController.text.trim()}),
       );
@@ -160,7 +160,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}/report'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/report'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'reason': reason}),
       );
@@ -183,7 +183,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.delete(
-        Uri.parse('http://localhost:3000/marketplace/listings/${widget.listingId}'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

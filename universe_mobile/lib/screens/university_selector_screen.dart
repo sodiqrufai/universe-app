@@ -46,7 +46,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
 
   Future<void> _fetchUniversities() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/universities'));
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/universities'));
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
         final list = data.map((e) => University.fromJson(e)).toList();
@@ -128,7 +128,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
               final token = await SessionService.getToken();
               try {
                 final response = await http.patch(
-                  Uri.parse('http://localhost:3000/profile/update'),
+                  Uri.parse('${ApiConfig.baseUrl}/profile/update'),
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer $token',

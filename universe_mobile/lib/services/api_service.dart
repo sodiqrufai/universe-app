@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'session_service.dart';
 
+
 class ApiService {
-  static const _baseUrl = 'http://localhost:3000';
+  static const _baseUrl = '${ApiConfig.baseUrl}';
 
   static Future<Map<String, dynamic>> get(String path) async {
     final token = await SessionService.getToken();

@@ -45,7 +45,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('http://localhost:3000/posts'));
+      final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/posts'));
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['content'] = _contentController.text.trim();
       request.fields['visibility'] = _visibility;

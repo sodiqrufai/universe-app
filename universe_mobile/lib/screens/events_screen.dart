@@ -31,7 +31,7 @@ class _EventsScreenState extends State<EventsScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/events/categories'));
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/events/categories'));
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -47,7 +47,7 @@ class _EventsScreenState extends State<EventsScreen> {
     final token = await SessionService.getToken();
     final params = <String, String>{};
     if (_selectedCategoryId != null) params['categoryId'] = _selectedCategoryId!;
-    final uri = Uri.parse('http://localhost:3000/events').replace(queryParameters: params.isEmpty ? null : params);
+    final uri = Uri.parse('${ApiConfig.baseUrl}/events').replace(queryParameters: params.isEmpty ? null : params);
     try {
       final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
       final data = jsonDecode(response.body);

@@ -24,7 +24,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:3000/auth/reset-password'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/reset-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': _emailController.text.trim()}),
       );

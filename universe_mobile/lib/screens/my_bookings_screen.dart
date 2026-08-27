@@ -31,7 +31,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/services/bookings'),
+        Uri.parse('${ApiConfig.baseUrl}/services/bookings'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -50,7 +50,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   Future<void> _respond(String bookingId, String status) async {
     final token = await SessionService.getToken();
     await http.patch(
-      Uri.parse('http://localhost:3000/services/bookings/$bookingId'),
+      Uri.parse('${ApiConfig.baseUrl}/services/bookings/$bookingId'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'status': status}),
     );

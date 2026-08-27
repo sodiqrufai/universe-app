@@ -36,10 +36,10 @@ export default function VerificationDetailPage() {
   const load = async (token: string) => {
     try {
       const [pendingRes, docRes] = await Promise.all([
-        fetch('http://localhost:3000/admin/verifications/pending', {
+        fetch('${ApiConfig.baseUrl}/admin/verifications/pending', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`http://localhost:3000/admin/verifications/${id}/document-url`, {
+        fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/document-url`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -64,7 +64,7 @@ export default function VerificationDetailPage() {
     setProcessing(true);
     const token = localStorage.getItem('admin_token');
     try {
-      const res = await fetch(`http://localhost:3000/admin/verifications/${id}/approve`, {
+      const res = await fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/approve`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -89,7 +89,7 @@ export default function VerificationDetailPage() {
     setProcessing(true);
     const token = localStorage.getItem('admin_token');
     try {
-      const res = await fetch(`http://localhost:3000/admin/verifications/${id}/reject`, {
+      const res = await fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/reject`, {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,

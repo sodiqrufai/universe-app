@@ -47,7 +47,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     final token = await SessionService.getToken();
     final profileResp = await http.get(
-      Uri.parse('http://localhost:3000/profile/me'),
+      Uri.parse('${ApiConfig.baseUrl}/profile/me'),
       headers: {'Authorization': 'Bearer $token'},
     );
     final profileData = jsonDecode(profileResp.body);
@@ -64,7 +64,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:3000/verification/submit'),
+        Uri.parse('${ApiConfig.baseUrl}/verification/submit'),
       );
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['fullName'] = _fullNameController.text.trim();

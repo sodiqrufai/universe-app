@@ -30,7 +30,7 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   Future<void> _fetchDepartments() async {
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/departments?facultyId=${widget.facultyId}'),
+        Uri.parse('${ApiConfig.baseUrl}/departments?facultyId=${widget.facultyId}'),
       );
       setState(() {
         _departments = jsonDecode(response.body);
@@ -52,7 +52,7 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.patch(
-        Uri.parse('http://localhost:3000/profile/update'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -76,7 +76,7 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.patch(
-        Uri.parse('http://localhost:3000/profile/update'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

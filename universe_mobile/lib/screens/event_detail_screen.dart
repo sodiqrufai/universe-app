@@ -33,7 +33,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/events/${widget.eventId}'),
+        Uri.parse('${ApiConfig.baseUrl}/events/${widget.eventId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -51,7 +51,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _rsvp(String status) async {
     final token = await SessionService.getToken();
     final response = await http.post(
-      Uri.parse('http://localhost:3000/events/${widget.eventId}/rsvp'),
+      Uri.parse('${ApiConfig.baseUrl}/events/${widget.eventId}/rsvp'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'status': status}),
     );
@@ -88,7 +88,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/events/${widget.eventId}/report'),
+        Uri.parse('${ApiConfig.baseUrl}/events/${widget.eventId}/report'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'reason': reason}),
       );
@@ -111,7 +111,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.patch(
-        Uri.parse('http://localhost:3000/events/${widget.eventId}/cancel'),
+        Uri.parse('${ApiConfig.baseUrl}/events/${widget.eventId}/cancel'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

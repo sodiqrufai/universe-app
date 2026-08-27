@@ -32,7 +32,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/marketplace/categories'));
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/marketplace/categories'));
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -65,7 +65,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
     final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('http://localhost:3000/marketplace/listings'));
+      final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/marketplace/listings'));
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = _titleController.text.trim();
       request.fields['description'] = _descController.text.trim();

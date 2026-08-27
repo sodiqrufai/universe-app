@@ -26,7 +26,7 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/marketplace/saved'),
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/saved'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

@@ -28,7 +28,7 @@ class _ProfileTabState extends State<ProfileTab> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/profile/me'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/me'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

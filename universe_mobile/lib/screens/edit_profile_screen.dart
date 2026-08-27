@@ -36,7 +36,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/profile/me'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/me'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -78,7 +78,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:3000/profile/avatar'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/avatar'),
       );
       request.headers['Authorization'] = 'Bearer $token';
       request.files.add(await http.MultipartFile.fromPath('file', picked.path));
@@ -124,7 +124,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.patch(
-        Uri.parse('http://localhost:3000/profile/update'),
+        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

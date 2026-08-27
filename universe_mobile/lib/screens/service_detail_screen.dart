@@ -37,7 +37,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/services/listings/${widget.serviceId}'),
+        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -72,7 +72,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     if (confirmed == true) {
       final token = await SessionService.getToken();
       final response = await http.post(
-        Uri.parse('http://localhost:3000/services/listings/${widget.serviceId}/book'),
+        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/book'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'message': messageController.text.trim()}),
       );
@@ -101,7 +101,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('http://localhost:3000/services/listings/${widget.serviceId}/report'),
+        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/report'),
         headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
         body: jsonEncode({'reason': reason}),
       );
@@ -124,7 +124,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.delete(
-        Uri.parse('http://localhost:3000/services/listings/${widget.serviceId}'),
+        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

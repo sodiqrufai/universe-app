@@ -27,7 +27,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/events/mine'),
+        Uri.parse('${ApiConfig.baseUrl}/events/mine'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

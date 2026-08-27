@@ -58,7 +58,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
         if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.delete(
-        Uri.parse('http://localhost:3000/education/groups/$groupId'),
+        Uri.parse('${ApiConfig.baseUrl}/education/groups/$groupId'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -82,7 +82,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final params = <String, String>{};
     if (_typeFilter != null) params['type'] = _typeFilter!;
     if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
-    final uri = Uri.parse('http://localhost:3000/education/courses/${widget.course['id']}/resources')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources')
         .replace(queryParameters: params.isEmpty ? null : params);
     try {
       final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
@@ -105,7 +105,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/education/courses/${widget.course['id']}/groups'),
+        Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -124,12 +124,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     if (group['isMember'] == true) {
       await http.delete(
-        Uri.parse('http://localhost:3000/education/groups/${group['id']}/leave'),
+        Uri.parse('${ApiConfig.baseUrl}/education/groups/${group['id']}/leave'),
         headers: {'Authorization': 'Bearer $token'},
       );
     } else {
       await http.post(
-        Uri.parse('http://localhost:3000/education/groups/${group['id']}/join'),
+        Uri.parse('${ApiConfig.baseUrl}/education/groups/${group['id']}/join'),
         headers: {'Authorization': 'Bearer $token'},
       );
     }
@@ -157,7 +157,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               if (nameController.text.trim().isEmpty) return;
               final token = await SessionService.getToken();
               final response = await http.post(
-                Uri.parse('http://localhost:3000/education/courses/${widget.course['id']}/groups'),
+                Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups'),
                 headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
                 body: jsonEncode({'name': nameController.text.trim(), 'description': descController.text.trim()}),
               );
@@ -224,7 +224,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('http://localhost:3000/education/courses/${widget.course['id']}/resources'),
+      Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources'),
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['title'] = titleController.text.trim();

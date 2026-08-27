@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/verification/status'),
+        Uri.parse('${ApiConfig.baseUrl}/verification/status'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);

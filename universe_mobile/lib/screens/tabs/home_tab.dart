@@ -37,7 +37,7 @@ class _HomeTabState extends State<HomeTab> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/home'),
+        Uri.parse('${ApiConfig.baseUrl}/home'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -72,7 +72,7 @@ class _HomeTabState extends State<HomeTab> {
   Future<void> _openAnonymous() async {
     final token = await SessionService.getToken();
     final response = await http.get(
-      Uri.parse('http://localhost:3000/anonymous/profile'),
+      Uri.parse('${ApiConfig.baseUrl}/anonymous/profile'),
       headers: {'Authorization': 'Bearer $token'},
     );
     final data = jsonDecode(response.body);

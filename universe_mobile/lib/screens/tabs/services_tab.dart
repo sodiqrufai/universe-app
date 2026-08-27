@@ -31,7 +31,7 @@ class _ServicesTabState extends State<ServicesTab> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('http://localhost:3000/services/categories'));
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/services/categories'));
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -48,7 +48,7 @@ class _ServicesTabState extends State<ServicesTab> {
     final params = <String, String>{};
     if (_selectedCategoryId != null) params['categoryId'] = _selectedCategoryId!;
     if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
-    final uri = Uri.parse('http://localhost:3000/services/listings')
+    final uri = Uri.parse('${ApiConfig.baseUrl}/services/listings')
         .replace(queryParameters: params.isEmpty ? null : params);
     try {
       final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});

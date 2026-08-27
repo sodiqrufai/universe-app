@@ -31,7 +31,7 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('http://localhost:3000/anonymous/feed'),
+        Uri.parse('${ApiConfig.baseUrl}/anonymous/feed'),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -97,7 +97,7 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
                   if (controller.text.trim().isEmpty) return;
                   final token = await SessionService.getToken();
                   final response = await http.post(
-                    Uri.parse('http://localhost:3000/anonymous/posts'),
+                    Uri.parse('${ApiConfig.baseUrl}/anonymous/posts'),
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': 'Bearer $token',

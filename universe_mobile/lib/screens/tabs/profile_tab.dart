@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
 import '../edit_profile_screen.dart';
 import '../login_screen.dart';
+import '../settings_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});

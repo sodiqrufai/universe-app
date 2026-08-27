@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Delete } from '@nestjs/common';
 
 
 @Controller('profile')
@@ -69,7 +70,7 @@ export class ProfileController {
     return { success: true, profile: data };
   }
   
-    @Post('avatar')
+  @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
   async uploadAvatar(
     @Headers('authorization') authHeader: string,
@@ -103,5 +104,82 @@ export class ProfileController {
       .upsert({ id: user.id, avatar_url: urlData.publicUrl, updated_at: new Date().toISOString() });
 
     return { success: true, avatarUrl: urlData.publicUrl };
+  }
+
+  @Get('settings')
+  async getSettings(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data, error } = await this.supabase.client
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (error) return { success: false, error: error.message };
+
+    return {
+      success: true,
+      settings: data ?? {
+        profile_visibility: 'everyone',
+        allow_messages: true,
+        notify_chat: true,
+        notify_marketplace: true,
+        notify_events: true,
+        notify_community: true,
+      },
+    };
+  }
+
+  @Patch('settings')
+  async updateSettings(
+    @Headers('authorization') authHeader: string,
+    @Body() body: Record<string, any>,
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { error } = await this.supabase.client
+      .from('user_settings')
+      .upsert({ user_id: user.id, ...body, updated_at: new Date().toISOString() });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  @Get('my-posts')
+  async getMyPosts(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data, error } = await this.supabase.client
+      .from('posts')
+      .select('*, profiles(full_name, username, avatar_url, is_verified)')
+      .eq('author_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, posts: data };
+  }
+
+  @Get('blocked-users')
+  async getBlockedUsers(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data, error } = await this.supabase.client
+      .from('blocked_users')
+      .select('id, blocked_id, profiles!blocked_users_blocked_id_fkey(full_name, avatar_url)')
+      .eq('blocker_id', user.id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, blocked: data };
+  }
+
+  @Delete('account')
+  async deleteAccount(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { error } = await this.supabase.client.auth.admin.deleteUser(user.id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   }
 }

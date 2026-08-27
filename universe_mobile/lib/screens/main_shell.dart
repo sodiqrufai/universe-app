@@ -9,6 +9,7 @@ import 'tabs/profile_tab.dart';
 import 'notifications_screen.dart';
 import 'my_bookings_screen.dart';
 import 'chat_inbox_screen.dart';
+import 'settings_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -66,6 +67,13 @@ class _MainShellState extends State<MainShell> {
               icon: const Icon(Icons.chat_bubble_outline),
               onPressed: () {
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChatInboxScreen()));
+              },
+            ),
+          if (_currentIndex == 4)
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
               },
             ),
           Stack(

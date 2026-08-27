@@ -107,4 +107,25 @@ class ApiService {
     } catch (_) {}
     return false;
   }
+
+  static Future<Map<String, dynamic>> delete(String path) async {
+    final token = await SessionService.getToken();
+    final response = await http.delete(
+      Uri.parse('$_baseUrl$path'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final newToken = await SessionService.getToken();
+        final retry = await http.delete(
+          Uri.parse('$_baseUrl$path'),
+          headers: {'Authorization': 'Bearer $newToken'},
+        );
+        return jsonDecode(retry.body);
+      }
+    }
+    return jsonDecode(response.body);
+  }
 }

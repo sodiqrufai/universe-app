@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Controller('anonymous')
@@ -207,6 +207,34 @@ export class AnonymousController {
       .insert({ anonymous_post_id: id, reported_by: user.id, reason: body.reason.trim() });
 
     if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  @Patch('profile')
+  async updateAnonymousUsername(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { username: string },
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+    const username = body.username?.trim().toLowerCase();
+
+    if (!username || username.length < 3 || username.length > 20 || !/^[a-z0-9_]+$/.test(username)) {
+      return { success: false, error: 'Invalid username' };
+    }
+
+    const { data: updated, error } = await this.supabase.client
+      .from('anonymous_profiles')
+      .update({ anonymous_username: username })
+      .eq('user_id', user.id)
+      .select();
+
+    if (error) {
+      if (error.code === '23505') return { success: false, error: 'That username is already taken' };
+      return { success: false, error: error.message };
+    }
+    if (!updated || updated.length === 0) {
+      return { success: false, error: 'No anonymous identity found' };
+    }
     return { success: true };
   }
 }

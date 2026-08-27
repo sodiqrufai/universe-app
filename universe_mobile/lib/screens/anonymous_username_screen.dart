@@ -6,7 +6,8 @@ class AnonymousUsernameScreen extends StatefulWidget {
   const AnonymousUsernameScreen({super.key});
 
   @override
-  State<AnonymousUsernameScreen> createState() => _AnonymousUsernameScreenState();
+  State<AnonymousUsernameScreen> createState() =>
+      _AnonymousUsernameScreenState();
 }
 
 class _AnonymousUsernameScreenState extends State<AnonymousUsernameScreen> {
@@ -43,9 +44,15 @@ class _AnonymousUsernameScreenState extends State<AnonymousUsernameScreen> {
       _saving = true;
       _error = null;
     });
-    final data = await ApiService.patch('/anonymous/profile', {'username': _controller.text.trim()});
+    final data = await ApiService.patch('/anonymous/profile', {
+      'username': _controller.text.trim(),
+    });
     if (data['success'] == true) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Username updated')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Username updated')));
+      }
     } else {
       setState(() {
         _error = data['error'] ?? 'Failed to update';
@@ -65,7 +72,11 @@ class _AnonymousUsernameScreenState extends State<AnonymousUsernameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Anonymous Identity')),
@@ -75,17 +86,24 @@ class _AnonymousUsernameScreenState extends State<AnonymousUsernameScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!_hasIdentity)
-              const Text("You haven't created an anonymous identity yet. Post anonymously to set one up.")
+              const Text(
+                "You haven't created an anonymous identity yet. Post anonymously to set one up.",
+              )
             else ...[
               TextField(
                 controller: _controller,
-                decoration: const InputDecoration(labelText: 'Anonymous Username'),
+                decoration: const InputDecoration(
+                  labelText: 'Anonymous Username',
+                ),
               ),
               const SizedBox(height: 16),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
               ElevatedButton(
                 onPressed: _saving ? null : _save,

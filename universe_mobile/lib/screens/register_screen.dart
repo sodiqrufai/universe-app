@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -38,7 +39,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
-       await SessionService.save(data['accessToken'], data['userId'], refreshToken: data['refreshToken']);
+        await SessionService.save(
+          data['accessToken'],
+          data['userId'],
+          refreshToken: data['refreshToken'],
+        );
         if (mounted) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const UniversitySelectorScreen()),
@@ -81,7 +86,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 16),
             const Text(
               'Join UniVerse',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -118,7 +127,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text('Create Account'),
             ),
@@ -138,3 +150,4 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+

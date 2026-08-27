@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -61,9 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (status == null) {
       return ElevatedButton.icon(
         onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const VerificationScreen()),
-          );
+          final result = await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const VerificationScreen()));
           if (result == true) _fetchStatus();
         },
         icon: const Icon(Icons.verified_outlined),
@@ -160,3 +161,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+

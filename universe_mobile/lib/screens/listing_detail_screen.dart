@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -43,7 +44,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}',
+        ),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -68,7 +71,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers',
+        ),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -87,7 +92,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final token = await SessionService.getToken();
     final response = await http.patch(
       Uri.parse('${ApiConfig.baseUrl}/marketplace/offers/$offerId'),
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
       body: jsonEncode({'status': status}),
     );
     final data = jsonDecode(response.body);
@@ -96,7 +104,12 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['error'] ?? 'Failed to respond (status ${response.statusCode})')),
+          SnackBar(
+            content: Text(
+              data['error'] ??
+                  'Failed to respond (status ${response.statusCode})',
+            ),
+          ),
         );
       }
     }
@@ -105,7 +118,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   Future<void> _toggleSave() async {
     final token = await SessionService.getToken();
     await http.post(
-      Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/save'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/save',
+      ),
       headers: {'Authorization': 'Bearer $token'},
     );
     _fetchListing();
@@ -123,22 +138,39 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           decoration: const InputDecoration(labelText: 'Your offer (₦)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Send Offer')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Send Offer'),
+          ),
         ],
       ),
     );
     if (confirmed == true && amountController.text.trim().isNotEmpty) {
       final token = await SessionService.getToken();
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/offers',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'amount': amountController.text.trim()}),
       );
       final data = jsonDecode(response.body);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['success'] == true ? 'Offer sent!' : (data['error'] ?? 'Failed'))),
+          SnackBar(
+            content: Text(
+              data['success'] == true
+                  ? 'Offer sent!'
+                  : (data['error'] ?? 'Failed'),
+            ),
+          ),
         );
       }
     }
@@ -150,21 +182,40 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Report this listing'),
-        content: TextField(controller: reasonController, decoration: const InputDecoration(hintText: 'Reason')),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(hintText: 'Reason'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, reasonController.text.trim()), child: const Text('Report')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, reasonController.text.trim()),
+            child: const Text('Report'),
+          ),
         ],
       ),
     );
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/report'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}/report',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'reason': reason}),
       );
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report submitted')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Report submitted')));
+      }
     }
   }
 
@@ -175,15 +226,23 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         title: const Text('Delete this listing?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
     if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/marketplace/listings/${widget.listingId}',
+        ),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -200,7 +259,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     if (_listing == null) {
       return const Scaffold(body: Center(child: Text('Listing not found')));
@@ -216,9 +279,15 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         title: const Text('Listing'),
         actions: [
           if (!isMine)
-            IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              onPressed: _report,
+            ),
           if (isMine)
-            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: _deleteListing),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _deleteListing,
+            ),
         ],
       ),
       body: ListView(
@@ -227,14 +296,23 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             SizedBox(
               height: 260,
               child: PageView(
-                children: images.map<Widget>((img) => Image.network(img['image_url'], fit: BoxFit.cover)).toList(),
+                children: images
+                    .map<Widget>(
+                      (img) =>
+                          Image.network(img['image_url'], fit: BoxFit.cover),
+                    )
+                    .toList(),
               ),
             )
           else
             Container(
               height: 260,
               color: AppColors.primary.withValues(alpha: 0.08),
-              child: const Icon(Icons.image_outlined, size: 60, color: AppColors.primary),
+              child: const Icon(
+                Icons.image_outlined,
+                size: 60,
+                color: AppColors.primary,
+              ),
             ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -244,32 +322,66 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(_listing!['title'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        _listing!['title'],
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     IconButton(
-                      icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_border, color: AppColors.primary),
+                      icon: Icon(
+                        isSaved ? Icons.bookmark : Icons.bookmark_border,
+                        color: AppColors.primary,
+                      ),
                       onPressed: _toggleSave,
                     ),
                   ],
                 ),
-                Text('₦${_listing!['price']}', style: const TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  '₦${_listing!['price']}',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 if (_listing!['condition'] != null)
                   Chip(label: Text(_listing!['condition'])),
                 const SizedBox(height: 16),
                 if (_listing!['description'] != null)
-                  Text(_listing!['description'], style: const TextStyle(fontSize: 14)),
+                  Text(
+                    _listing!['description'],
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      backgroundImage: profile?['avatar_url'] != null ? NetworkImage(profile['avatar_url']) : null,
-                      child: profile?['avatar_url'] == null ? const Icon(Icons.person, size: 16, color: AppColors.primary) : null,
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
+                      ),
+                      backgroundImage: profile?['avatar_url'] != null
+                          ? NetworkImage(profile['avatar_url'])
+                          : null,
+                      child: profile?['avatar_url'] == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 16,
+                              color: AppColors.primary,
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(profile?['full_name'] ?? 'Seller', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(
+                      child: Text(
+                        profile?['full_name'] ?? 'Seller',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                     if (!isMine)
                       TextButton.icon(
                         onPressed: _messageSeller,
@@ -286,31 +398,51 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   ),
                 if (isMine) ...[
                   const Divider(height: 32),
-                  const Text('Offers Received', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Text(
+                    'Offers Received',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
                   const SizedBox(height: 12),
                   if (_loadingOffers)
-                    const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                    const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    )
                   else if (_offers.isEmpty)
-                    const Text('No offers yet', style: TextStyle(color: Colors.black54))
+                    const Text(
+                      'No offers yet',
+                      style: TextStyle(color: Colors.black54),
+                    )
                   else
                     ..._offers.map((o) {
                       final buyer = o['profiles'];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(
-                          title: Text('₦${o['amount']} from ${buyer?['full_name'] ?? 'Buyer'}'),
+                          title: Text(
+                            '₦${o['amount']} from ${buyer?['full_name'] ?? 'Buyer'}',
+                          ),
                           subtitle: Text(o['status']),
                           trailing: o['status'] == 'pending'
                               ? Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.check, color: AppColors.success),
-                                      onPressed: () => _respondToOffer(o['id'], 'accepted'),
+                                      icon: const Icon(
+                                        Icons.check,
+                                        color: AppColors.success,
+                                      ),
+                                      onPressed: () =>
+                                          _respondToOffer(o['id'], 'accepted'),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.red),
-                                      onPressed: () => _respondToOffer(o['id'], 'rejected'),
+                                      icon: const Icon(
+                                        Icons.close,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () =>
+                                          _respondToOffer(o['id'], 'rejected'),
                                     ),
                                   ],
                                 )
@@ -331,7 +463,9 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
     final sellerId = _listing!['seller_id'];
     if (sellerId == null) return;
 
-    final data = await ApiService.post('/chat/direct', {'otherUserId': sellerId});
+    final data = await ApiService.post('/chat/direct', {
+      'otherUserId': sellerId,
+    });
     if (data['success'] == true && mounted) {
       final profile = _listing!['profiles'];
       Navigator.of(context).push(
@@ -344,8 +478,11 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+        SnackBar(
+          content: Text(data['error'] ?? 'Could not start conversation'),
+        ),
       );
     }
   }
 }
+

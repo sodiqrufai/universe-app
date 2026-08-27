@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -29,7 +30,8 @@ class UniversitySelectorScreen extends StatefulWidget {
   const UniversitySelectorScreen({super.key});
 
   @override
-  State<UniversitySelectorScreen> createState() => _UniversitySelectorScreenState();
+  State<UniversitySelectorScreen> createState() =>
+      _UniversitySelectorScreenState();
 }
 
 class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
@@ -46,7 +48,9 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
 
   Future<void> _fetchUniversities() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/universities'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/universities'),
+      );
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
         final list = data.map((e) => University.fromJson(e)).toList();
@@ -103,10 +107,14 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
     if (_error != null) {
-      return Center(child: Text(_error!, style: const TextStyle(color: Colors.red)));
+      return Center(
+        child: Text(_error!, style: const TextStyle(color: Colors.red)),
+      );
     }
     if (_filtered.isEmpty) {
       return const Center(child: Text('No universities found'));
@@ -123,7 +131,9 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
               child: Icon(Icons.school, color: Colors.white),
             ),
             title: Text(u.name),
-            subtitle: Text([u.shortName, u.city].where((x) => x != null).join(' • ')),
+            subtitle: Text(
+              [u.shortName, u.city].where((x) => x != null).join(' • '),
+            ),
             onTap: () async {
               final token = await SessionService.getToken();
               try {
@@ -139,21 +149,28 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
                 if (data['success'] == true) {
                   if (context.mounted) {
                     Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => FacultySelectorScreen(universityId: u.id)),
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            FacultySelectorScreen(universityId: u.id),
+                      ),
                     );
                   }
                 } else {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(data['error'] ?? 'Failed to save university')),
+                      SnackBar(
+                        content: Text(
+                          data['error'] ?? 'Failed to save university',
+                        ),
+                      ),
                     );
                   }
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               }
             },
@@ -163,3 +180,4 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
     );
   }
 }
+

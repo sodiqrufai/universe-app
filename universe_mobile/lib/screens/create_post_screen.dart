@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -22,7 +23,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
     if (picked != null) {
       setState(() {
         _image = File(picked.path);
@@ -45,12 +49,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/posts'));
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/posts'),
+      );
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['content'] = _contentController.text.trim();
       request.fields['visibility'] = _visibility;
       if (_image != null) {
-        request.files.add(await http.MultipartFile.fromPath('file', _image!.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('file', _image!.path),
+        );
       }
 
       final streamedResponse = await request.send();
@@ -92,8 +101,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           TextButton(
             onPressed: _posting ? null : _submit,
             child: _posting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Post', style: TextStyle(fontWeight: FontWeight.bold)),
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    'Post',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
           ),
         ],
       ),
@@ -122,17 +138,29 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               children: [
                 IconButton(
                   onPressed: _pickImage,
-                  icon: const Icon(Icons.image_outlined, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.image_outlined,
+                    color: AppColors.primary,
+                  ),
                 ),
                 const Spacer(),
-                const Text('Visibility:', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                const Text(
+                  'Visibility:',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
                 const SizedBox(width: 8),
                 DropdownButton<String>(
                   value: _visibility,
                   underline: const SizedBox.shrink(),
                   items: const [
-                    DropdownMenuItem(value: 'university', child: Text('My University')),
-                    DropdownMenuItem(value: 'global', child: Text('Global (all students)')),
+                    DropdownMenuItem(
+                      value: 'university',
+                      child: Text('My University'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'global',
+                      child: Text('Global (all students)'),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _visibility = v!),
                 ),
@@ -149,3 +177,4 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 }
+

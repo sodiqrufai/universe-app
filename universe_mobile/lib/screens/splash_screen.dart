@@ -27,9 +27,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (token == null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
       return;
     }
 
@@ -37,7 +37,8 @@ class _SplashScreenState extends State<SplashScreen> {
       final data = await ApiService.get('/profile/me');
       if (data['success'] == true) {
         final profile = data['profile'];
-        final onboarded = profile['university_id'] != null &&
+        final onboarded =
+            profile['university_id'] != null &&
             profile['department_id'] != null &&
             profile['level'] != null;
 
@@ -45,7 +46,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => onboarded ? const MainShell() : const UniversitySelectorScreen(),
+            builder: (_) => onboarded
+                ? const MainShell()
+                : const UniversitySelectorScreen(),
           ),
         );
       } else {
@@ -92,7 +95,11 @@ class _SplashScreenState extends State<SplashScreen> {
                         color: Colors.white.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.school, color: Colors.white, size: 56),
+                      child: const Icon(
+                        Icons.school,
+                        color: Colors.white,
+                        size: 56,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     const Text(
@@ -106,7 +113,10 @@ class _SplashScreenState extends State<SplashScreen> {
                     const SizedBox(height: 8),
                     RichText(
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 16, color: Colors.white70),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
                         children: [
                           const TextSpan(text: 'One App. '),
                           TextSpan(

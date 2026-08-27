@@ -6,10 +6,12 @@ class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
   bool _chat = true;
   bool _marketplace = true;
   bool _events = true;
@@ -48,14 +50,20 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       'notify_community': _community,
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification settings saved')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Notification settings saved')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
@@ -83,7 +91,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton(onPressed: _save, child: const Text('Save Changes')),
+            child: ElevatedButton(
+              onPressed: _save,
+              child: const Text('Save Changes'),
+            ),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -7,7 +8,6 @@ import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 
-
 class CourseDetailScreen extends StatefulWidget {
   final dynamic course;
   const CourseDetailScreen({super.key, required this.course});
@@ -16,7 +16,8 @@ class CourseDetailScreen extends StatefulWidget {
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
 }
 
-class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTickerProviderStateMixin {
+class _CourseDetailScreenState extends State<CourseDetailScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   List<dynamic> _resources = [];
   List<dynamic> _groups = [];
@@ -25,7 +26,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   String? _typeFilter;
   final _searchController = TextEditingController();
 
-    String? _myUserId;
+  String? _myUserId;
 
   @override
   void initState() {
@@ -48,14 +49,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this group?'),
-        content: const Text('This removes it for everyone. This cannot be undone.'),
+        content: const Text(
+          'This removes it for everyone. This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
-        if (confirm == true) {
+    if (confirm == true) {
       final token = await SessionService.getToken();
       final response = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/education/groups/$groupId'),
@@ -67,7 +76,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['error'] ?? 'Failed to delete (status ${response.statusCode})')),
+            SnackBar(
+              content: Text(
+                data['error'] ??
+                    'Failed to delete (status ${response.statusCode})',
+              ),
+            ),
           );
         }
       }
@@ -81,11 +95,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     final params = <String, String>{};
     if (_typeFilter != null) params['type'] = _typeFilter!;
-    if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
-    final uri = Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources')
-        .replace(queryParameters: params.isEmpty ? null : params);
+    if (_searchController.text.trim().isNotEmpty) {
+      params['search'] = _searchController.text.trim();
+    }
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
       final data = jsonDecode(response.body);
       setState(() {
         _resources = data['resources'] ?? [];
@@ -105,7 +125,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups',
+        ),
         headers: {'Authorization': 'Bearer $token'},
       );
       final data = jsonDecode(response.body);
@@ -146,23 +168,44 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Group name')),
-            TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description (optional)')),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Group name'),
+            ),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
               final token = await SessionService.getToken();
               final response = await http.post(
-                Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups'),
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-                body: jsonEncode({'name': nameController.text.trim(), 'description': descController.text.trim()}),
+                Uri.parse(
+                  '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups',
+                ),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer $token',
+                },
+                body: jsonEncode({
+                  'name': nameController.text.trim(),
+                  'description': descController.text.trim(),
+                }),
               );
               final data = jsonDecode(response.body);
-              if (context.mounted) Navigator.pop(context, data['success'] == true);
+              if (context.mounted) {
+                Navigator.pop(context, data['success'] == true);
+              }
             },
             child: const Text('Create'),
           ),
@@ -187,16 +230,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
           padding: EdgeInsets.only(
-            left: 20, right: 20, top: 20,
+            left: 20,
+            right: 20,
+            top: 20,
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Upload Resource', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Upload Resource',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -224,7 +275,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final token = await SessionService.getToken();
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
+      ),
     );
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['title'] = titleController.text.trim();
@@ -238,11 +291,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     if (data['success'] == true) {
       _fetchResources();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Resource uploaded')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Resource uploaded')));
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['error'] ?? 'Upload failed')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Upload failed')),
+        );
       }
     }
   }
@@ -262,7 +319,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
-          tabs: const [Tab(text: 'Resources'), Tab(text: 'Study Groups')],
+          tabs: const [
+            Tab(text: 'Resources'),
+            Tab(text: 'Study Groups'),
+          ],
         ),
       ),
       body: TabBarView(
@@ -284,35 +344,47 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               decoration: InputDecoration(
                 hintText: 'Search resources...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(icon: const Icon(Icons.tune), onPressed: _showFilterSheet),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.tune),
+                  onPressed: _showFilterSheet,
+                ),
               ),
             ),
           ),
           Expanded(
             child: _loadingResources
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : _resources.isEmpty
-                    ? const Center(child: Text('No resources yet — be the first to share.'))
-                    : ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _resources.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final r = _resources[index];
-                          return Card(
-                            child: ListTile(
-                              leading: Icon(
-                                r['resource_type'] == 'past_question' ? Icons.quiz_outlined : Icons.description_outlined,
-                                color: AppColors.primary,
-                              ),
-                              title: Text(r['title']),
-                              subtitle: Text(r['resource_type']),
-                              trailing: const Icon(Icons.download_outlined),
-                              onTap: () => launchUrl(Uri.parse(r['file_path']), mode: LaunchMode.externalApplication),
-                            ),
-                          );
-                        },
-                      ),
+                ? const Center(
+                    child: Text('No resources yet — be the first to share.'),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _resources.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final r = _resources[index];
+                      return Card(
+                        child: ListTile(
+                          leading: Icon(
+                            r['resource_type'] == 'past_question'
+                                ? Icons.quiz_outlined
+                                : Icons.description_outlined,
+                            color: AppColors.primary,
+                          ),
+                          title: Text(r['title']),
+                          subtitle: Text(r['resource_type']),
+                          trailing: const Icon(Icons.download_outlined),
+                          onTap: () => launchUrl(
+                            Uri.parse(r['file_path']),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -348,42 +420,51 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   Widget _buildGroupsTab() {
     return Scaffold(
       body: _loadingGroups
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _groups.isEmpty
-              ? const Center(child: Text('No study groups yet — start one!'))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _groups.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final g = _groups[index];
-                                        final isCreator = g['created_by'] == _myUserId;
-                    return Card(
-                      child: ListTile(
-                        title: Text(g['name']),
-                        subtitle: Text('${g['memberCount']} members'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isCreator)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                onPressed: () => _deleteGroup(g['id']),
-                              ),
-                            ElevatedButton(
-                              onPressed: () => _toggleMembership(g),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: g['isMember'] == true ? Colors.grey.shade300 : AppColors.primary,
-                                foregroundColor: g['isMember'] == true ? Colors.black87 : Colors.white,
-                              ),
-                              child: Text(g['isMember'] == true ? 'Leave' : 'Join'),
+          ? const Center(child: Text('No study groups yet — start one!'))
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: _groups.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final g = _groups[index];
+                final isCreator = g['created_by'] == _myUserId;
+                return Card(
+                  child: ListTile(
+                    title: Text(g['name']),
+                    subtitle: Text('${g['memberCount']} members'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isCreator)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
                             ),
-                          ],
+                            onPressed: () => _deleteGroup(g['id']),
+                          ),
+                        ElevatedButton(
+                          onPressed: () => _toggleMembership(g),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: g['isMember'] == true
+                                ? Colors.grey.shade300
+                                : AppColors.primary,
+                            foregroundColor: g['isMember'] == true
+                                ? Colors.black87
+                                : Colors.white,
+                          ),
+                          child: Text(g['isMember'] == true ? 'Leave' : 'Join'),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
       floatingActionButton: FloatingActionButton.small(
         backgroundColor: AppColors.primary,
         onPressed: _createGroup,
@@ -392,3 +473,4 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     );
   }
 }
+

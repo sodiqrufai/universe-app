@@ -1,3 +1,4 @@
+import '../../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,9 @@ class _ServicesTabState extends State<ServicesTab> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/services/categories'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/services/categories'),
+      );
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -46,12 +49,20 @@ class _ServicesTabState extends State<ServicesTab> {
     });
     final token = await SessionService.getToken();
     final params = <String, String>{};
-    if (_selectedCategoryId != null) params['categoryId'] = _selectedCategoryId!;
-    if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
-    final uri = Uri.parse('${ApiConfig.baseUrl}/services/listings')
-        .replace(queryParameters: params.isEmpty ? null : params);
+    if (_selectedCategoryId != null) {
+      params['categoryId'] = _selectedCategoryId!;
+    }
+    if (_searchController.text.trim().isNotEmpty) {
+      params['search'] = _searchController.text.trim();
+    }
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/services/listings',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
         setState(() {
@@ -85,7 +96,10 @@ class _ServicesTabState extends State<ServicesTab> {
               decoration: InputDecoration(
                 hintText: 'Search services...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _fetchServices),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _fetchServices,
+                ),
               ),
             ),
           ),
@@ -125,32 +139,44 @@ class _ServicesTabState extends State<ServicesTab> {
           const SizedBox(height: 8),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : _hasError
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
-                            const SizedBox(height: 12),
-                            const Text('Could not load services'),
-                            const SizedBox(height: 12),
-                            ElevatedButton(onPressed: _fetchServices, child: const Text('Retry')),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off,
+                          size: 40,
+                          color: Colors.black38,
                         ),
-                      )
-                    : _services.isEmpty
-                        ? const Center(child: Text('No services yet — be the first to offer one!'))
-                        : RefreshIndicator(
-                            onRefresh: _fetchServices,
-                            color: AppColors.primary,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _services.length,
-                              separatorBuilder: (_, _) => const SizedBox(height: 10),
-                              itemBuilder: (context, index) => _buildServiceCard(_services[index]),
-                            ),
-                          ),
+                        const SizedBox(height: 12),
+                        const Text('Could not load services'),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _fetchServices,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : _services.isEmpty
+                ? const Center(
+                    child: Text('No services yet — be the first to offer one!'),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchServices,
+                    color: AppColors.primary,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _services.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) =>
+                          _buildServiceCard(_services[index]),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -180,19 +206,29 @@ class _ServicesTabState extends State<ServicesTab> {
       child: InkWell(
         onTap: () async {
           await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: service['id'])),
+            MaterialPageRoute(
+              builder: (_) => ServiceDetailScreen(serviceId: service['id']),
+            ),
           );
           _fetchServices();
         },
         child: Row(
           children: [
             imageUrl != null
-                ? Image.network(imageUrl, width: 90, height: 90, fit: BoxFit.cover)
+                ? Image.network(
+                    imageUrl,
+                    width: 90,
+                    height: 90,
+                    fit: BoxFit.cover,
+                  )
                 : Container(
                     width: 90,
                     height: 90,
                     color: AppColors.primary.withValues(alpha: 0.08),
-                    child: const Icon(Icons.handyman_outlined, color: AppColors.primary),
+                    child: const Icon(
+                      Icons.handyman_outlined,
+                      color: AppColors.primary,
+                    ),
                   ),
             Expanded(
               child: Padding(
@@ -200,11 +236,29 @@ class _ServicesTabState extends State<ServicesTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(service['title'], style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      service['title'],
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 4),
-                    Text(priceLabel, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text(
+                      priceLabel,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(profile?['full_name'] ?? 'Provider', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                    Text(
+                      profile?['full_name'] ?? 'Provider',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -215,3 +269,4 @@ class _ServicesTabState extends State<ServicesTab> {
     );
   }
 }
+

@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -50,7 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           final profileData = await ApiService.get('/profile/me');
           final profile = profileData['profile'];
-          final onboarded = profile != null &&
+          final onboarded =
+              profile != null &&
               profile['university_id'] != null &&
               profile['department_id'] != null &&
               profile['level'] != null;
@@ -58,7 +60,9 @@ class _LoginScreenState extends State<LoginScreen> {
           if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
-                builder: (_) => onboarded ? const MainShell() : const UniversitySelectorScreen(),
+                builder: (_) => onboarded
+                    ? const MainShell()
+                    : const UniversitySelectorScreen(),
               ),
             );
           }
@@ -100,7 +104,11 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             const Text(
               'Welcome Back',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -130,7 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: TextButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ForgotPasswordScreen(),
+                    ),
                   );
                 },
                 child: const Text('Forgot Password?'),
@@ -148,7 +158,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text('Log In'),
             ),
@@ -168,3 +181,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -37,7 +38,9 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
       );
       final data = jsonDecode(response.body);
       setState(() {
-        _hint = data['available'] == true ? 'Available!' : (data['error'] ?? 'Already taken');
+        _hint = data['available'] == true
+            ? 'Available!'
+            : (data['error'] ?? 'Already taken');
       });
     } catch (_) {
     } finally {
@@ -104,11 +107,19 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.masks_outlined, size: 56, color: AppColors.primary),
+            const Icon(
+              Icons.masks_outlined,
+              size: 56,
+              color: AppColors.primary,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Speak freely. Stay anonymous.',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -122,10 +133,16 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
               decoration: InputDecoration(
                 labelText: 'Anonymous Username',
                 prefixIcon: const Icon(Icons.alternate_email),
-                suffixIcon: _checking ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                ) : null,
+                suffixIcon: _checking
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
               ),
             ),
             if (_hint != null)
@@ -133,7 +150,12 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _hint!,
-                  style: TextStyle(color: _hint == 'Available!' ? AppColors.success : Colors.red, fontSize: 13),
+                  style: TextStyle(
+                    color: _hint == 'Available!'
+                        ? AppColors.success
+                        : Colors.red,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             const SizedBox(height: 24),
@@ -145,7 +167,14 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
             ElevatedButton(
               onPressed: _creating ? null : _create,
               child: _creating
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Text('Create Anonymous Identity'),
             ),
           ],
@@ -154,3 +183,4 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
     );
   }
 }
+

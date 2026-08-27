@@ -5,7 +5,11 @@ class SessionService {
   static const _refreshKey = 'refresh_token';
   static const _userIdKey = 'user_id';
 
-  static Future<void> save(String token, String userId, {String? refreshToken}) async {
+  static Future<void> save(
+    String token,
+    String userId, {
+    String? refreshToken,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userIdKey, userId);

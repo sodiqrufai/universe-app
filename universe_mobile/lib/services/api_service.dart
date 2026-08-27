@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'session_service.dart';
-
+import '../config/api_config.dart';
 
 class ApiService {
-  static const _baseUrl = '${ApiConfig.baseUrl}';
+  static const _baseUrl = ApiConfig.baseUrl;
 
   static Future<Map<String, dynamic>> get(String path) async {
     final token = await SessionService.getToken();
@@ -27,7 +27,10 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
-  static Future<Map<String, dynamic>> patch(String path, Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> patch(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final token = await SessionService.getToken();
     final response = await http.patch(
       Uri.parse('$_baseUrl$path'),
@@ -56,7 +59,10 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
-  static Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> post(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final token = await SessionService.getToken();
     final response = await http.post(
       Uri.parse('$_baseUrl$path'),

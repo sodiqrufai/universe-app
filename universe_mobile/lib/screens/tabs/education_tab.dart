@@ -1,3 +1,4 @@
+import '../../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -57,7 +58,9 @@ class _EducationTabState extends State<EducationTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
     if (_hasError) {
       return Center(
@@ -68,7 +71,10 @@ class _EducationTabState extends State<EducationTab> {
             const SizedBox(height: 12),
             const Text('Could not load your courses'),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: _fetchCourses, child: const Text('Retry')),
+            ElevatedButton(
+              onPressed: _fetchCourses,
+              child: const Text('Retry'),
+            ),
           ],
         ),
       );
@@ -99,14 +105,19 @@ class _EducationTabState extends State<EducationTab> {
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                child: const Icon(Icons.menu_book_outlined, color: AppColors.primary),
+                child: const Icon(
+                  Icons.menu_book_outlined,
+                  color: AppColors.primary,
+                ),
               ),
               title: Text(course['name']),
               subtitle: course['code'] != null ? Text(course['code']) : null,
               trailing: const Icon(Icons.chevron_right),
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course)),
+                  MaterialPageRoute(
+                    builder: (_) => CourseDetailScreen(course: course),
+                  ),
                 );
               },
             ),
@@ -116,3 +127,4 @@ class _EducationTabState extends State<EducationTab> {
     );
   }
 }
+

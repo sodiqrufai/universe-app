@@ -1,3 +1,4 @@
+import '../../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -81,7 +82,9 @@ class _HomeTabState extends State<HomeTab> {
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => hasProfile ? const AnonymousFeedScreen() : const AnonymousSetupScreen(),
+          builder: (_) => hasProfile
+              ? const AnonymousFeedScreen()
+              : const AnonymousSetupScreen(),
         ),
       );
     }
@@ -90,7 +93,9 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
 
     if (_hasError) {
@@ -116,7 +121,11 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           Text(
             '${_greeting()}, ${_fullName?.split(' ').first ?? 'there'} 👋',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
           if (_universityName != null)
             Padding(
@@ -130,13 +139,19 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: 24),
           const Text(
             'Announcements',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 12),
           if (_announcements.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: Text('No announcements yet — check back soon.')),
+              child: Center(
+                child: Text('No announcements yet — check back soon.'),
+              ),
             )
           else
             ..._announcements.map((a) => _buildAnnouncementCard(a)),
@@ -163,9 +178,13 @@ class _HomeTabState extends State<HomeTab> {
             if (label == 'Anonymous') {
               _openAnonymous();
             } else if (label == 'Marketplace') {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MarketplaceScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MarketplaceScreen()),
+              );
             } else if (label == 'Events') {
-              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EventsScreen()));
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const EventsScreen()));
             } else if (label == 'Education') {
               widget.onGoToEducation?.call();
             }
@@ -199,25 +218,39 @@ class _HomeTabState extends State<HomeTab> {
               children: [
                 if (a['is_global'] == true)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.accent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
                       'UniVerse',
-                      style: TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(a['title'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            Text(
+              a['title'],
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
             const SizedBox(height: 4),
-            Text(a['body'], style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            Text(
+              a['body'],
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

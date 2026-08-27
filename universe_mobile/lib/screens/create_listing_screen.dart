@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -32,7 +33,9 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/marketplace/categories'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/categories'),
+      );
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -45,13 +48,16 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
     final picked = await picker.pickMultiImage(imageQuality: 80);
     if (picked.isNotEmpty) {
       setState(() {
-        _images.addAll(picked.take(6 - _images.length).map((x) => File(x.path)));
+        _images.addAll(
+          picked.take(6 - _images.length).map((x) => File(x.path)),
+        );
       });
     }
   }
 
   Future<void> _submit() async {
-    if (_titleController.text.trim().isEmpty || _priceController.text.trim().isEmpty) {
+    if (_titleController.text.trim().isEmpty ||
+        _priceController.text.trim().isEmpty) {
       setState(() {
         _error = 'Title and price are required';
       });
@@ -65,15 +71,22 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
     final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/marketplace/listings'));
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/listings'),
+      );
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = _titleController.text.trim();
       request.fields['description'] = _descController.text.trim();
       request.fields['price'] = _priceController.text.trim();
       request.fields['condition'] = _condition;
-      if (_selectedCategoryId != null) request.fields['categoryId'] = _selectedCategoryId!;
+      if (_selectedCategoryId != null) {
+        request.fields['categoryId'] = _selectedCategoryId!;
+      }
       for (final image in _images) {
-        request.files.add(await http.MultipartFile.fromPath('images', image.path));
+        request.files.add(
+          await http.MultipartFile.fromPath('images', image.path),
+        );
       }
 
       final streamedResponse = await request.send();
@@ -117,8 +130,15 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
           TextButton(
             onPressed: _submitting ? null : _submit,
             child: _submitting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Post', style: TextStyle(fontWeight: FontWeight.bold)),
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    'Post',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
           ),
         ],
       ),
@@ -132,13 +152,20 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  ..._images.map((img) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(img, width: 90, height: 90, fit: BoxFit.cover),
+                  ..._images.map(
+                    (img) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          img,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                   if (_images.length < 6)
                     GestureDetector(
                       onTap: _pickImages,
@@ -149,14 +176,20 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                           color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.add_a_photo_outlined, color: AppColors.primary),
+                        child: const Icon(
+                          Icons.add_a_photo_outlined,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _descController,
@@ -174,7 +207,10 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               initialValue: _selectedCategoryId,
               decoration: const InputDecoration(labelText: 'Category'),
               items: _categories.map<DropdownMenuItem<String>>((c) {
-                return DropdownMenuItem(value: c['id'] as String, child: Text(c['name']));
+                return DropdownMenuItem(
+                  value: c['id'] as String,
+                  child: Text(c['name']),
+                );
               }).toList(),
               onChanged: (v) => setState(() => _selectedCategoryId = v),
             ),
@@ -198,3 +234,4 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
     );
   }
 }
+

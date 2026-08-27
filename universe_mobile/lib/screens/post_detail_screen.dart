@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -79,7 +80,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final authorId = widget.post['author_id'];
     if (authorId == null) return;
 
-    final data = await ApiService.post('/chat/direct', {'otherUserId': authorId});
+    final data = await ApiService.post('/chat/direct', {
+      'otherUserId': authorId,
+    });
     if (data['success'] == true && mounted) {
       final profile = widget.post['profiles'];
       Navigator.of(context).push(
@@ -92,7 +95,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+        SnackBar(
+          content: Text(data['error'] ?? 'Could not start conversation'),
+        ),
       );
     }
   }
@@ -105,12 +110,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         title: const Text('Report this post'),
         content: TextField(
           controller: reasonController,
-          decoration: const InputDecoration(hintText: 'Why are you reporting this?'),
+          decoration: const InputDecoration(
+            hintText: 'Why are you reporting this?',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, reasonController.text.trim()),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, reasonController.text.trim()),
             child: const Text('Report'),
           ),
         ],
@@ -128,9 +139,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         body: jsonEncode({'reason': reason}),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report submitted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Report submitted')));
       }
     }
   }
@@ -142,8 +153,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         title: const Text('Delete this post?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -168,7 +185,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final profile = widget.post['profiles'];
     final name = profile?['full_name'] ?? 'Student';
     final avatarUrl = profile?['avatar_url'];
-    final myUserId = null; // ownership check simplified: server enforces real permission
+    final myUserId =
+        null; // ownership check simplified: server enforces real permission
 
     return Scaffold(
       appBar: AppBar(
@@ -181,7 +199,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'report', child: Text('Report')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete (if yours)')),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete (if yours)'),
+              ),
             ],
           ),
         ],
@@ -196,12 +217,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                      child: avatarUrl == null ? const Icon(Icons.person, size: 18, color: AppColors.primary) : null,
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
+                      ),
+                      backgroundImage: avatarUrl != null
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: AppColors.primary,
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: _messageAuthor,
                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
@@ -210,21 +246,36 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
+                Text(
+                  widget.post['content'],
+                  style: const TextStyle(fontSize: 15),
+                ),
                 if (widget.post['image_url'] != null) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(widget.post['image_url'], fit: BoxFit.cover, width: double.infinity),
+                    child: Image.network(
+                      widget.post['image_url'],
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
                   ),
                 ],
                 const Divider(height: 32),
-                const Text('Comments', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const Text(
+                  'Comments',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
                 const SizedBox(height: 12),
                 if (_loading)
-                  const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 else if (_comments.isEmpty)
-                  const Text('No comments yet — be the first to reply.', style: TextStyle(color: Colors.black54))
+                  const Text(
+                    'No comments yet — be the first to reply.',
+                    style: TextStyle(color: Colors.black54),
+                  )
                 else
                   ..._comments.map((c) {
                     final cProfile = c['profiles'];
@@ -235,10 +286,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         children: [
                           CircleAvatar(
                             radius: 14,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                            backgroundImage: cProfile?['avatar_url'] != null ? NetworkImage(cProfile['avatar_url']) : null,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.15,
+                            ),
+                            backgroundImage: cProfile?['avatar_url'] != null
+                                ? NetworkImage(cProfile['avatar_url'])
+                                : null,
                             child: cProfile?['avatar_url'] == null
-                                ? const Icon(Icons.person, size: 14, color: AppColors.primary)
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 14,
+                                    color: AppColors.primary,
+                                  )
                                 : null,
                           ),
                           const SizedBox(width: 8),
@@ -246,8 +305,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(cProfile?['full_name'] ?? 'Student', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                Text(c['content'], style: const TextStyle(fontSize: 13)),
+                                Text(
+                                  cProfile?['full_name'] ?? 'Student',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  c['content'],
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                               ],
                             ),
                           ),
@@ -266,7 +334,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   Expanded(
                     child: TextField(
                       controller: _commentController,
-                      decoration: const InputDecoration(hintText: 'Write a comment...'),
+                      decoration: const InputDecoration(
+                        hintText: 'Write a comment...',
+                      ),
                     ),
                   ),
                   IconButton(
@@ -282,3 +352,4 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 }
+

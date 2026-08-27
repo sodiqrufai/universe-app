@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -10,7 +11,8 @@ class DepartmentSelectorScreen extends StatefulWidget {
   const DepartmentSelectorScreen({super.key, required this.facultyId});
 
   @override
-  State<DepartmentSelectorScreen> createState() => _DepartmentSelectorScreenState();
+  State<DepartmentSelectorScreen> createState() =>
+      _DepartmentSelectorScreenState();
 }
 
 class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
@@ -30,7 +32,9 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   Future<void> _fetchDepartments() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/departments?facultyId=${widget.facultyId}'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/departments?facultyId=${widget.facultyId}',
+        ),
       );
       setState(() {
         _departments = jsonDecode(response.body);
@@ -67,7 +71,9 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -85,13 +91,15 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
       );
       final data = jsonDecode(response.body);
       if (data['success'] == true && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainShell()),
-        );
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -100,21 +108,31 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedDepartmentId == null ? 'Select Your Department' : 'Select Your Level'),
+        title: Text(
+          _selectedDepartmentId == null
+              ? 'Select Your Department'
+              : 'Select Your Level',
+        ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : _selectedDepartmentId == null
-                  ? _buildDepartmentList()
-                  : _buildLevelList(),
+          ? Center(
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            )
+          : _selectedDepartmentId == null
+          ? _buildDepartmentList()
+          : _buildLevelList(),
     );
   }
 
   Widget _buildDepartmentList() {
     if (_departments.isEmpty) {
-      return const Center(child: Text('No departments found for this faculty yet'));
+      return const Center(
+        child: Text('No departments found for this faculty yet'),
+      );
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -142,7 +160,10 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
         final level = _levels[index];
         return Card(
           child: ListTile(
-            leading: const Icon(Icons.school_outlined, color: AppColors.primary),
+            leading: const Icon(
+              Icons.school_outlined,
+              color: AppColors.primary,
+            ),
             title: Text(level),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _selectLevel(level),
@@ -152,3 +173,4 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     );
   }
 }
+

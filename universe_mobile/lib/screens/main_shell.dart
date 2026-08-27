@@ -30,7 +30,13 @@ class _MainShellState extends State<MainShell> {
     const ProfileTab(),
   ];
 
-  final _titles = const ['UniVerse', 'Education', 'Services', 'Campus Feed', 'Profile'];
+  final _titles = const [
+    'UniVerse',
+    'Education',
+    'Services',
+    'Campus Feed',
+    'Profile',
+  ];
 
   @override
   void initState() {
@@ -59,21 +65,27 @@ class _MainShellState extends State<MainShell> {
             IconButton(
               icon: const Icon(Icons.event_note_outlined),
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyBookingsScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+                );
               },
             ),
           if (_currentIndex == 3)
             IconButton(
               icon: const Icon(Icons.chat_bubble_outline),
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChatInboxScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ChatInboxScreen()),
+                );
               },
             ),
           if (_currentIndex == 4)
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
               },
             ),
           Stack(
@@ -83,7 +95,9 @@ class _MainShellState extends State<MainShell> {
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: () async {
                   await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationsScreen(),
+                    ),
                   );
                   _fetchUnreadCount();
                 },
@@ -94,8 +108,14 @@ class _MainShellState extends State<MainShell> {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
                     child: Text(
                       '$_unreadCount',
                       style: const TextStyle(color: Colors.white, fontSize: 9),
@@ -108,10 +128,7 @@ class _MainShellState extends State<MainShell> {
           const SizedBox(width: 8),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _tabs),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -119,11 +136,31 @@ class _MainShellState extends State<MainShell> {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.black45,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), activeIcon: Icon(Icons.school), label: 'Education'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view_outlined), activeIcon: Icon(Icons.grid_view), label: 'Services'),
-          BottomNavigationBarItem(icon: Icon(Icons.forum_outlined), activeIcon: Icon(Icons.forum), label: 'Campus Feed'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.school_outlined),
+            activeIcon: Icon(Icons.school),
+            label: 'Education',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.grid_view_outlined),
+            activeIcon: Icon(Icons.grid_view),
+            label: 'Services',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Campus Feed',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );

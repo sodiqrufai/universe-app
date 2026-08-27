@@ -43,32 +43,40 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Blocked Users')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _blocked.isEmpty
-              ? const Center(child: Text("You haven't blocked anyone"))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _blocked.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final b = _blocked[index];
-                    final profile = b['profiles'];
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                          backgroundImage: profile?['avatar_url'] != null ? NetworkImage(profile['avatar_url']) : null,
-                          child: profile?['avatar_url'] == null ? const Icon(Icons.person, color: AppColors.primary) : null,
-                        ),
-                        title: Text(profile?['full_name'] ?? 'Unknown'),
-                        trailing: OutlinedButton(
-                          onPressed: () => _unblock(b['blocked_id']),
-                          child: const Text('Unblock'),
-                        ),
+          ? const Center(child: Text("You haven't blocked anyone"))
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: _blocked.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final b = _blocked[index];
+                final profile = b['profiles'];
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
                       ),
-                    );
-                  },
-                ),
+                      backgroundImage: profile?['avatar_url'] != null
+                          ? NetworkImage(profile['avatar_url'])
+                          : null,
+                      child: profile?['avatar_url'] == null
+                          ? const Icon(Icons.person, color: AppColors.primary)
+                          : null,
+                    ),
+                    title: Text(profile?['full_name'] ?? 'Unknown'),
+                    trailing: OutlinedButton(
+                      onPressed: () => _unblock(b['blocked_id']),
+                      child: const Text('Unblock'),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

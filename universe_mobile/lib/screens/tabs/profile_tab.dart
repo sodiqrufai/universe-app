@@ -1,3 +1,4 @@
+import '../../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -5,7 +6,6 @@ import '../../theme/app_theme.dart';
 import '../../services/session_service.dart';
 import '../edit_profile_screen.dart';
 import '../login_screen.dart';
-import '../settings_screen.dart';
 
 class ProfileTab extends StatefulWidget {
   const ProfileTab({super.key});
@@ -56,7 +56,9 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
 
     final isVerified = _profile?['is_verified'] == true;
@@ -78,9 +80,15 @@ class _ProfileTabState extends State<ProfileTab> {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                backgroundImage: avatarUrl != null
+                    ? NetworkImage(avatarUrl)
+                    : null,
                 child: avatarUrl == null
-                    ? const Icon(Icons.person, size: 40, color: AppColors.primary)
+                    ? const Icon(
+                        Icons.person,
+                        size: 40,
+                        color: AppColors.primary,
+                      )
                     : null,
               ),
               const SizedBox(width: 16),
@@ -93,18 +101,28 @@ class _ProfileTabState extends State<ProfileTab> {
                         Flexible(
                           child: Text(
                             fullName,
-                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isVerified) ...[
                           const SizedBox(width: 6),
-                          const Icon(Icons.verified, color: AppColors.primary, size: 20),
+                          const Icon(
+                            Icons.verified,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
                         ],
                       ],
                     ),
                     if (username != null)
-                      Text('@$username', style: const TextStyle(color: Colors.black54)),
+                      Text(
+                        '@$username',
+                        style: const TextStyle(color: Colors.black54),
+                      ),
                   ],
                 ),
               ),
@@ -125,13 +143,22 @@ class _ProfileTabState extends State<ProfileTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(universityName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    universityName,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   if (departmentName != null || level != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        [departmentName, level].where((x) => x != null).join(' • '),
-                        style: const TextStyle(color: Colors.black54, fontSize: 13),
+                        [
+                          departmentName,
+                          level,
+                        ].where((x) => x != null).join(' • '),
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                 ],
@@ -158,3 +185,4 @@ class _ProfileTabState extends State<ProfileTab> {
     );
   }
 }
+

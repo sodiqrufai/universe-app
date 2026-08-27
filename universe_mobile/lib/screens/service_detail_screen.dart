@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -61,25 +62,44 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         content: TextField(
           controller: messageController,
           maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Add a message (optional)'),
+          decoration: const InputDecoration(
+            hintText: 'Add a message (optional)',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Send Request')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Send Request'),
+          ),
         ],
       ),
     );
     if (confirmed == true) {
       final token = await SessionService.getToken();
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/book'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/book',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'message': messageController.text.trim()}),
       );
       final data = jsonDecode(response.body);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['success'] == true ? 'Booking request sent!' : (data['error'] ?? 'Failed'))),
+          SnackBar(
+            content: Text(
+              data['success'] == true
+                  ? 'Booking request sent!'
+                  : (data['error'] ?? 'Failed'),
+            ),
+          ),
         );
       }
     }
@@ -91,21 +111,40 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Report this service'),
-        content: TextField(controller: reasonController, decoration: const InputDecoration(hintText: 'Reason')),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(hintText: 'Reason'),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, reasonController.text.trim()), child: const Text('Report')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(context, reasonController.text.trim()),
+            child: const Text('Report'),
+          ),
         ],
       ),
     );
     if (reason != null && reason.isNotEmpty) {
       final token = await SessionService.getToken();
       await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/report'),
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+        Uri.parse(
+          '${ApiConfig.baseUrl}/services/listings/${widget.serviceId}/report',
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'reason': reason}),
       );
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report submitted')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Report submitted')));
+      }
     }
   }
 
@@ -116,8 +155,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         title: const Text('Delete this service?'),
         content: const Text('This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -131,7 +176,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       if (data['success'] == true && mounted) {
         Navigator.of(context).pop();
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(data['error'] ?? 'Failed to delete')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Failed to delete')),
+        );
       }
     }
   }
@@ -139,7 +186,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     if (_service == null) {
       return const Scaffold(body: Center(child: Text('Service not found')));
@@ -156,8 +207,16 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       appBar: AppBar(
         title: const Text('Service'),
         actions: [
-          if (!isMine) IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
-          if (isMine) IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: _deleteService),
+          if (!isMine)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              onPressed: _report,
+            ),
+          if (isMine)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: _deleteService,
+            ),
         ],
       ),
       body: ListView(
@@ -166,7 +225,12 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             SizedBox(
               height: 220,
               child: PageView(
-                children: images.map<Widget>((img) => Image.network(img['image_url'], fit: BoxFit.cover)).toList(),
+                children: images
+                    .map<Widget>(
+                      (img) =>
+                          Image.network(img['image_url'], fit: BoxFit.cover),
+                    )
+                    .toList(),
               ),
             ),
           Padding(
@@ -174,23 +238,54 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_service!['title'], style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  _service!['title'],
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(priceLabel, style: const TextStyle(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  priceLabel,
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 if (_service!['description'] != null)
-                  Text(_service!['description'], style: const TextStyle(fontSize: 14)),
+                  Text(
+                    _service!['description'],
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 const SizedBox(height: 20),
                 Row(
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      backgroundImage: profile?['avatar_url'] != null ? NetworkImage(profile['avatar_url']) : null,
-                      child: profile?['avatar_url'] == null ? const Icon(Icons.person, size: 16, color: AppColors.primary) : null,
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
+                      ),
+                      backgroundImage: profile?['avatar_url'] != null
+                          ? NetworkImage(profile['avatar_url'])
+                          : null,
+                      child: profile?['avatar_url'] == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 16,
+                              color: AppColors.primary,
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(profile?['full_name'] ?? 'Provider', style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(
+                      child: Text(
+                        profile?['full_name'] ?? 'Provider',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                     if (!isMine)
                       TextButton.icon(
                         onPressed: _messageProvider,
@@ -201,7 +296,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (!isMine)
-                  ElevatedButton(onPressed: _bookService, child: const Text('Request Booking')),
+                  ElevatedButton(
+                    onPressed: _bookService,
+                    child: const Text('Request Booking'),
+                  ),
               ],
             ),
           ),
@@ -214,7 +312,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     final providerId = _service!['provider_id'];
     if (providerId == null) return;
 
-    final data = await ApiService.post('/chat/direct', {'otherUserId': providerId});
+    final data = await ApiService.post('/chat/direct', {
+      'otherUserId': providerId,
+    });
     if (data['success'] == true && mounted) {
       final profile = _service!['profiles'];
       Navigator.of(context).push(
@@ -227,8 +327,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+        SnackBar(
+          content: Text(data['error'] ?? 'Could not start conversation'),
+        ),
       );
     }
   }
 }
+

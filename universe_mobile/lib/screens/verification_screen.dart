@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -22,7 +23,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
   Future<void> _pickDocument() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
     if (picked != null) {
       setState(() {
         _document = File(picked.path);
@@ -55,7 +59,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     if (universityId == null) {
       setState(() {
-        _error = 'No university found on your profile. Please complete onboarding first.';
+        _error =
+            'No university found on your profile. Please complete onboarding first.';
         _submitting = false;
       });
       return;
@@ -70,7 +75,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
       request.fields['fullName'] = _fullNameController.text.trim();
       request.fields['matricNumber'] = _matricController.text.trim();
       request.fields['universityId'] = universityId;
-      request.files.add(await http.MultipartFile.fromPath('file', _document!.path));
+      request.files.add(
+        await http.MultipartFile.fromPath('file', _document!.path),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -116,7 +123,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
           children: [
             const Text(
               'Get Verified',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -147,14 +158,20 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: _document == null
                     ? const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.upload_file, size: 40, color: AppColors.primary),
+                            Icon(
+                              Icons.upload_file,
+                              size: 40,
+                              color: AppColors.primary,
+                            ),
                             SizedBox(height: 8),
                             Text('Tap to upload your Student ID'),
                           ],
@@ -162,7 +179,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       )
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.file(_document!, fit: BoxFit.cover, width: double.infinity),
+                        child: Image.file(
+                          _document!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
                       ),
               ),
             ),
@@ -178,7 +199,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : const Text('Submit for Verification'),
             ),
@@ -188,3 +212,4 @@ class _VerificationScreenState extends State<VerificationScreen> {
     );
   }
 }
+

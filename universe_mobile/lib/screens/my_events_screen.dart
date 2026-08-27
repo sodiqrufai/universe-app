@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -47,36 +48,46 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('My Events')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _events.isEmpty
-              ? const Center(child: Text("You haven't RSVPed to any events yet"))
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _events.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final entry = _events[index];
-                    final event = entry['events'];
-                    if (event == null) return const SizedBox.shrink();
-                    final startsAt = DateTime.tryParse(event['starts_at'] ?? '');
-                    final dateLabel = startsAt != null ? DateFormat('MMM d • h:mm a').format(startsAt.toLocal()) : '';
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                          child: const Icon(Icons.event, color: AppColors.primary),
-                        ),
-                        title: Text(event['title'] ?? ''),
-                        subtitle: Text('$dateLabel • ${entry['status']}'),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => EventDetailScreen(eventId: event['id'])),
-                          );
-                        },
+          ? const Center(child: Text("You haven't RSVPed to any events yet"))
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: _events.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final entry = _events[index];
+                final event = entry['events'];
+                if (event == null) return const SizedBox.shrink();
+                final startsAt = DateTime.tryParse(event['starts_at'] ?? '');
+                final dateLabel = startsAt != null
+                    ? DateFormat('MMM d • h:mm a').format(startsAt.toLocal())
+                    : '';
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(
+                        alpha: 0.15,
                       ),
-                    );
-                  },
-                ),
+                      child: const Icon(Icons.event, color: AppColors.primary),
+                    ),
+                    title: Text(event['title'] ?? ''),
+                    subtitle: Text('$dateLabel • ${entry['status']}'),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              EventDetailScreen(eventId: event['id']),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 }
+

@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -73,7 +74,10 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Share something anonymously', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Share something anonymously',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -89,7 +93,9 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
               TextField(
                 controller: controller,
                 maxLines: 4,
-                decoration: const InputDecoration(hintText: "What's on your mind?"),
+                decoration: const InputDecoration(
+                  hintText: "What's on your mind?",
+                ),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
@@ -102,10 +108,15 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
                       'Content-Type': 'application/json',
                       'Authorization': 'Bearer $token',
                     },
-                    body: jsonEncode({'content': controller.text.trim(), 'category': category}),
+                    body: jsonEncode({
+                      'content': controller.text.trim(),
+                      'category': category,
+                    }),
                   );
                   final data = jsonDecode(response.body);
-                  if (context.mounted) Navigator.of(context).pop(data['success'] == true);
+                  if (context.mounted) {
+                    Navigator.of(context).pop(data['success'] == true);
+                  }
                 },
                 child: const Text('Post'),
               ),
@@ -123,74 +134,106 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Anonymous')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _hasError
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
-                      const SizedBox(height: 12),
-                      const Text('Could not load the feed'),
-                      const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _fetchFeed, child: const Text('Retry')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
+                  const SizedBox(height: 12),
+                  const Text('Could not load the feed'),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _fetchFeed,
+                    child: const Text('Retry'),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchFeed,
-                  color: AppColors.primary,
-                  child: _posts.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 100),
-                            Center(child: Text('No posts yet — share something!')),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _posts.length,
-                          itemBuilder: (context, index) {
-                            final p = _posts[index];
-                            final username = p['anonymous_profiles']?['anonymous_username'] ?? 'anonymous';
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (_) => AnonymousPostDetailScreen(post: p)),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _fetchFeed,
+              color: AppColors.primary,
+              child: _posts.isEmpty
+                  ? ListView(
+                      children: const [
+                        SizedBox(height: 100),
+                        Center(child: Text('No posts yet — share something!')),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _posts.length,
+                      itemBuilder: (context, index) {
+                        final p = _posts[index];
+                        final username =
+                            p['anonymous_profiles']?['anonymous_username'] ??
+                            'anonymous';
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      AnonymousPostDetailScreen(post: p),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
                                     children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary.withValues(alpha: 0.1),
-                                              borderRadius: BorderRadius.circular(20),
-                                            ),
-                                            child: Text(p['category'], style: const TextStyle(fontSize: 10, color: AppColors.primary)),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(
+                                            alpha: 0.1,
                                           ),
-                                          const Spacer(),
-                                          Text('@$username', style: const TextStyle(fontSize: 12, color: Colors.black45)),
-                                        ],
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          p['category'],
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(p['content'], style: const TextStyle(fontSize: 14)),
+                                      const Spacer(),
+                                      Text(
+                                        '@$username',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black45,
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    p['content'],
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ],
                               ),
-                            );
-                          },
-                        ),
-                ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: _showCreatePostSheet,
@@ -199,3 +242,4 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
     );
   }
 }
+

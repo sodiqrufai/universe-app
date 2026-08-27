@@ -1,3 +1,4 @@
+import '../../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -61,7 +62,8 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
     setState(() {
       final wasReacted = _posts[index]['hasReacted'] == true;
       _posts[index]['hasReacted'] = !wasReacted;
-      _posts[index]['reactionCount'] = (_posts[index]['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
+      _posts[index]['reactionCount'] =
+          (_posts[index]['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
     });
     try {
       await http.post(
@@ -75,42 +77,52 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _hasError
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
-                      const SizedBox(height: 12),
-                      const Text('Could not load the feed'),
-                      const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _fetchFeed, child: const Text('Retry')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
+                  const SizedBox(height: 12),
+                  const Text('Could not load the feed'),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _fetchFeed,
+                    child: const Text('Retry'),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchFeed,
-                  color: AppColors.primary,
-                  child: _posts.isEmpty
-                      ? ListView(
-                          children: const [
-                            SizedBox(height: 100),
-                            Center(child: Text('No posts yet — be the first to share something!')),
-                          ],
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _posts.length,
-                          itemBuilder: (context, index) => _buildPostCard(_posts[index], index),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _fetchFeed,
+              color: AppColors.primary,
+              child: _posts.isEmpty
+                  ? ListView(
+                      children: const [
+                        SizedBox(height: 100),
+                        Center(
+                          child: Text(
+                            'No posts yet — be the first to share something!',
+                          ),
                         ),
-                ),
+                      ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _posts.length,
+                      itemBuilder: (context, index) =>
+                          _buildPostCard(_posts[index], index),
+                    ),
+            ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         onPressed: () async {
-          final created = await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-          );
+          final created = await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const CreatePostScreen()));
           if (created == true) _fetchFeed();
         },
         child: const Icon(Icons.add, color: Colors.white),
@@ -145,9 +157,15 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
                   CircleAvatar(
                     radius: 18,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                    backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                    backgroundImage: avatarUrl != null
+                        ? NetworkImage(avatarUrl)
+                        : null,
                     child: avatarUrl == null
-                        ? const Icon(Icons.person, size: 18, color: AppColors.primary)
+                        ? const Icon(
+                            Icons.person,
+                            size: 18,
+                            color: AppColors.primary,
+                          )
                         : null,
                   ),
                   const SizedBox(width: 10),
@@ -155,23 +173,41 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
                     child: Row(
                       children: [
                         Flexible(
-                          child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         if (isVerified) ...[
                           const SizedBox(width: 4),
-                          const Icon(Icons.verified, size: 14, color: AppColors.primary),
+                          const Icon(
+                            Icons.verified,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
                         ],
                       ],
                     ),
                   ),
                   if (isGlobal)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.accent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text('Global', style: TextStyle(fontSize: 10, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Global',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -181,7 +217,12 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(post['image_url'], fit: BoxFit.cover, width: double.infinity, height: 180),
+                  child: Image.network(
+                    post['image_url'],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 180,
+                  ),
                 ),
               ],
               const SizedBox(height: 10),
@@ -192,19 +233,36 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
                     child: Row(
                       children: [
                         Icon(
-                          post['hasReacted'] == true ? Icons.favorite : Icons.favorite_border,
+                          post['hasReacted'] == true
+                              ? Icons.favorite
+                              : Icons.favorite_border,
                           size: 18,
-                          color: post['hasReacted'] == true ? Colors.red : Colors.black45,
+                          color: post['hasReacted'] == true
+                              ? Colors.red
+                              : Colors.black45,
                         ),
                         const SizedBox(width: 4),
-                        Text('${post['reactionCount'] ?? 0}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                        Text(
+                          '${post['reactionCount'] ?? 0}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 20),
-                  const Icon(Icons.mode_comment_outlined, size: 18, color: Colors.black45),
+                  const Icon(
+                    Icons.mode_comment_outlined,
+                    size: 18,
+                    color: Colors.black45,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${post['commentCount'] ?? 0}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  Text(
+                    '${post['commentCount'] ?? 0}',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
                 ],
               ),
             ],
@@ -214,3 +272,4 @@ class _CampusFeedTabState extends State<CampusFeedTab> {
     );
   }
 }
+

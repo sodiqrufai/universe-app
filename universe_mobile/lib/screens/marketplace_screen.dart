@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/marketplace/categories'));
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/marketplace/categories'),
+      );
       final data = jsonDecode(response.body);
       setState(() {
         _categories = data['categories'] ?? [];
@@ -46,12 +49,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     });
     final token = await SessionService.getToken();
     final params = <String, String>{};
-    if (_selectedCategoryId != null) params['categoryId'] = _selectedCategoryId!;
-    if (_searchController.text.trim().isNotEmpty) params['search'] = _searchController.text.trim();
-    final uri = Uri.parse('${ApiConfig.baseUrl}/marketplace/listings')
-        .replace(queryParameters: params.isEmpty ? null : params);
+    if (_selectedCategoryId != null) {
+      params['categoryId'] = _selectedCategoryId!;
+    }
+    if (_searchController.text.trim().isNotEmpty) {
+      params['search'] = _searchController.text.trim();
+    }
+    final uri = Uri.parse(
+      '${ApiConfig.baseUrl}/marketplace/listings',
+    ).replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final response = await http.get(uri, headers: {'Authorization': 'Bearer $token'});
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
       final data = jsonDecode(response.body);
       if (data['success'] == true) {
         setState(() {
@@ -98,7 +109,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               decoration: InputDecoration(
                 hintText: 'Search items...',
                 prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _fetchListings),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _fetchListings,
+                ),
               ),
             ),
           ),
@@ -138,37 +152,52 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : _hasError
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
-                            const SizedBox(height: 12),
-                            const Text('Could not load listings'),
-                            const SizedBox(height: 12),
-                            ElevatedButton(onPressed: _fetchListings, child: const Text('Retry')),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.wifi_off,
+                          size: 40,
+                          color: Colors.black38,
                         ),
-                      )
-                    : _listings.isEmpty
-                        ? const Center(child: Text('No listings yet — be the first to sell something!'))
-                        : RefreshIndicator(
-                            onRefresh: _fetchListings,
-                            color: AppColors.primary,
-                            child: GridView.builder(
-                              padding: const EdgeInsets.all(12),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 0.72,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
-                              itemCount: _listings.length,
-                              itemBuilder: (context, index) => _buildListingCard(_listings[index]),
-                            ),
+                        const SizedBox(height: 12),
+                        const Text('Could not load listings'),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _fetchListings,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : _listings.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No listings yet — be the first to sell something!',
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchListings,
+                    color: AppColors.primary,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.72,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
                           ),
+                      itemCount: _listings.length,
+                      itemBuilder: (context, index) =>
+                          _buildListingCard(_listings[index]),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -192,7 +221,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return GestureDetector(
       onTap: () async {
         await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ListingDetailScreen(listingId: listing['id'])),
+          MaterialPageRoute(
+            builder: (_) => ListingDetailScreen(listingId: listing['id']),
+          ),
         );
         _fetchListings();
       },
@@ -203,10 +234,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           children: [
             Expanded(
               child: imageUrl != null
-                  ? Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity)
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    )
                   : Container(
                       color: AppColors.primary.withValues(alpha: 0.08),
-                      child: const Icon(Icons.image_outlined, color: AppColors.primary, size: 40),
+                      child: const Icon(
+                        Icons.image_outlined,
+                        color: AppColors.primary,
+                        size: 40,
+                      ),
                     ),
             ),
             Padding(
@@ -218,12 +257,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     listing['title'],
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '₦${listing['price']}',
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -234,3 +280,4 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 }
+

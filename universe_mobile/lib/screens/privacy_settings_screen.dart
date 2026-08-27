@@ -42,14 +42,20 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       'allow_messages': _allowMessages,
     });
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Privacy settings saved')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Privacy settings saved')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Privacy')),
@@ -57,7 +63,10 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Who can see your profile', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              'Who can see your profile',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           RadioListTile<String>(
             title: const Text('Everyone'),
@@ -80,7 +89,10 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton(onPressed: _save, child: const Text('Save Changes')),
+            child: ElevatedButton(
+              onPressed: _save,
+              child: const Text('Save Changes'),
+            ),
           ),
         ],
       ),

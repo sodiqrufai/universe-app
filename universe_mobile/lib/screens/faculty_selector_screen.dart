@@ -1,3 +1,4 @@
+import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -27,7 +28,9 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
   Future<void> _fetchFaculties() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/faculties?universityId=${widget.universityId}'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/faculties?universityId=${widget.universityId}',
+        ),
       );
       setState(() {
         _faculties = jsonDecode(response.body);
@@ -62,7 +65,9 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -72,26 +77,33 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Select Your Faculty')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-              : _faculties.isEmpty
-                  ? const Center(child: Text('No faculties found for this university yet'))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _faculties.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final f = _faculties[index];
-                        return Card(
-                          child: ListTile(
-                            title: Text(f['name']),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => _selectFaculty(f['id'], f['name']),
-                          ),
-                        );
-                      },
-                    ),
+          ? Center(
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
+            )
+          : _faculties.isEmpty
+          ? const Center(
+              child: Text('No faculties found for this university yet'),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: _faculties.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final f = _faculties[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(f['name']),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _selectFaculty(f['id'], f['name']),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
+

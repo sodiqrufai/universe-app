@@ -1,12 +1,13 @@
-import '../../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
+import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final dynamic course;
@@ -23,6 +24,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   List<dynamic> _groups = [];
   bool _loadingResources = true;
   bool _loadingGroups = true;
+  bool _resourcesError = false;
+  bool _groupsError = false;
   String? _typeFilter;
   final _searchController = TextEditingController();
 
@@ -32,32 +35,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadUserId();
-    _fetchResources();
-    _fetchGroups();
+    _init();
   }
 
-  Future<void> _loadUserId() async {
-    final id = await SessionService.getUserId();
-    setState(() {
-      _myUserId = id;
-    });
+  Future<void> _init() async {
+    _myUserId = await SessionService.getUserId();
+    _fetchResources();
+    _fetchGroups();
   }
 
   Future<void> _deleteGroup(String groupId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this group?'),
-        content: const Text(
-          'This removes it for everyone. This cannot be undone.',
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
         ),
+        title: const Text('Delete this group?'),
+        content: const Text('This removes it for everyone. This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
@@ -65,23 +67,19 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
     );
     if (confirm == true) {
-      final token = await SessionService.getToken();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/education/groups/$groupId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        _fetchGroups();
-      } else {
+      try {
+        final data = await ApiService.delete('/education/groups/$groupId');
+        if (data['success'] == true) {
+          _fetchGroups();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['error'] ?? 'Could not delete group')),
+          );
+        }
+      } catch (_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['error'] ??
-                    'Failed to delete (status ${response.statusCode})',
-              ),
-            ),
+            const SnackBar(content: Text('Could not delete group')),
           );
         }
       }
@@ -91,28 +89,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   Future<void> _fetchResources() async {
     setState(() {
       _loadingResources = true;
+      _resourcesError = false;
     });
-    final token = await SessionService.getToken();
     final params = <String, String>{};
     if (_typeFilter != null) params['type'] = _typeFilter!;
     if (_searchController.text.trim().isNotEmpty) {
       params['search'] = _searchController.text.trim();
     }
-    final uri = Uri.parse(
-      '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
-    ).replace(queryParameters: params.isEmpty ? null : params);
+    final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
     try {
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
+      final data = await ApiService.get(
+        '/education/courses/${widget.course['id']}/resources$query',
       );
-      final data = jsonDecode(response.body);
       setState(() {
         _resources = data['resources'] ?? [];
         _loadingResources = false;
       });
     } catch (e) {
       setState(() {
+        _resourcesError = true;
         _loadingResources = false;
       });
     }
@@ -121,41 +116,42 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   Future<void> _fetchGroups() async {
     setState(() {
       _loadingGroups = true;
+      _groupsError = false;
     });
-    final token = await SessionService.getToken();
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups',
-        ),
-        headers: {'Authorization': 'Bearer $token'},
+      final data = await ApiService.get(
+        '/education/courses/${widget.course['id']}/groups',
       );
-      final data = jsonDecode(response.body);
       setState(() {
         _groups = data['groups'] ?? [];
         _loadingGroups = false;
       });
     } catch (e) {
       setState(() {
+        _groupsError = true;
         _loadingGroups = false;
       });
     }
   }
 
   Future<void> _toggleMembership(dynamic group) async {
-    final token = await SessionService.getToken();
-    if (group['isMember'] == true) {
-      await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/education/groups/${group['id']}/leave'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-    } else {
-      await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/education/groups/${group['id']}/join'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+    try {
+      final data = group['isMember'] == true
+          ? await ApiService.delete('/education/groups/${group['id']}/leave')
+          : await ApiService.post('/education/groups/${group['id']}/join', {});
+      if (data['success'] != true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update group membership')),
+        );
+      }
+      _fetchGroups();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not update group membership')),
+        );
+      }
     }
-    _fetchGroups();
   }
 
   Future<void> _createGroup() async {
@@ -164,6 +160,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final created = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         title: const Text('Create Study Group'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -174,9 +173,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             ),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-              ),
+              decoration: const InputDecoration(labelText: 'Description (optional)'),
             ),
           ],
         ),
@@ -185,26 +182,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
-              final token = await SessionService.getToken();
-              final response = await http.post(
-                Uri.parse(
-                  '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/groups',
-                ),
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Bearer $token',
-                },
-                body: jsonEncode({
-                  'name': nameController.text.trim(),
-                  'description': descController.text.trim(),
-                }),
-              );
-              final data = jsonDecode(response.body);
-              if (context.mounted) {
-                Navigator.pop(context, data['success'] == true);
+              try {
+                final data = await ApiService.post(
+                  '/education/courses/${widget.course['id']}/groups',
+                  {
+                    'name': nameController.text.trim(),
+                    'description': descController.text.trim(),
+                  },
+                );
+                if (context.mounted) {
+                  Navigator.pop(context, data['success'] == true);
+                }
+              } catch (_) {
+                if (context.mounted) Navigator.pop(context, false);
               }
             },
             child: const Text('Create'),
@@ -212,7 +205,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         ],
       ),
     );
-    if (created == true) _fetchGroups();
+    if (created == true) {
+      _fetchGroups();
+    } else if (created == false && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not create group')));
+    }
   }
 
   Future<void> _uploadResource() async {
@@ -272,34 +271,43 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
     if (confirmed != true) return;
 
-    final token = await SessionService.getToken();
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(
-        '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
-      ),
-    );
-    request.headers['Authorization'] = 'Bearer $token';
-    request.fields['title'] = titleController.text.trim();
-    request.fields['resourceType'] = type;
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+    // ApiService has no multipart/file-upload method — this is the one
+    // legitimate remaining raw http call in this file, using the same
+    // token source as everywhere else.
+    try {
+      final token = await SessionService.getToken();
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(
+          '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
+        ),
+      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['title'] = titleController.text.trim();
+      request.fields['resourceType'] = type;
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-    final data = jsonDecode(response.body);
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
 
-    if (data['success'] == true) {
-      _fetchResources();
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Resource uploaded')));
-      }
-    } else {
-      if (mounted) {
+      if (data['success'] == true) {
+        _fetchResources();
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Resource uploaded')));
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['error'] ?? 'Upload failed')),
         );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Upload failed')));
       }
     }
   }
@@ -315,10 +323,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.course['name']),
+        title: Text(widget.course['name'] ?? 'Course'),
         bottom: TabBar(
           controller: _tabController,
           labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
           tabs: const [
             Tab(text: 'Resources'),
             Tab(text: 'Study Groups'),
@@ -337,7 +347,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: TextField(
               controller: _searchController,
               onSubmitted: (_) => _fetchResources(),
@@ -351,41 +361,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               ),
             ),
           ),
-          Expanded(
-            child: _loadingResources
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                : _resources.isEmpty
-                ? const Center(
-                    child: Text('No resources yet — be the first to share.'),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _resources.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final r = _resources[index];
-                      return Card(
-                        child: ListTile(
-                          leading: Icon(
-                            r['resource_type'] == 'past_question'
-                                ? Icons.quiz_outlined
-                                : Icons.description_outlined,
-                            color: AppColors.primary,
-                          ),
-                          title: Text(r['title']),
-                          subtitle: Text(r['resource_type']),
-                          trailing: const Icon(Icons.download_outlined),
-                          onTap: () => launchUrl(
-                            Uri.parse(r['file_path']),
-                            mode: LaunchMode.externalApplication,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+          Expanded(child: _buildResourcesList()),
         ],
       ),
       floatingActionButton: FloatingActionButton.small(
@@ -393,6 +369,60 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         onPressed: _uploadResource,
         child: const Icon(Icons.upload_file, color: Colors.white),
       ),
+    );
+  }
+
+  Widget _buildResourcesList() {
+    if (_loadingResources) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (_resourcesError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            const Text('Could not load resources'),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _fetchResources, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+    if (_resources.isEmpty) {
+      return const Center(child: Text('No resources yet — be the first to share.'));
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      itemCount: _resources.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final r = _resources[index];
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: AppColors.lightPurple,
+              child: Icon(
+                r['resource_type'] == 'past_question'
+                    ? Icons.quiz_outlined
+                    : Icons.description_outlined,
+                color: AppColors.primary,
+              ),
+            ),
+            title: Text(r['title'] ?? ''),
+            subtitle: Text(
+              r['resource_type'] ?? '',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Icons.download_outlined, color: AppColors.textMuted),
+            onTap: () => launchUrl(
+              Uri.parse(r['file_path']),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -419,52 +449,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   Widget _buildGroupsTab() {
     return Scaffold(
-      body: _loadingGroups
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : _groups.isEmpty
-          ? const Center(child: Text('No study groups yet — start one!'))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _groups.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final g = _groups[index];
-                final isCreator = g['created_by'] == _myUserId;
-                return Card(
-                  child: ListTile(
-                    title: Text(g['name']),
-                    subtitle: Text('${g['memberCount']} members'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isCreator)
-                          IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            onPressed: () => _deleteGroup(g['id']),
-                          ),
-                        ElevatedButton(
-                          onPressed: () => _toggleMembership(g),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: g['isMember'] == true
-                                ? Colors.grey.shade300
-                                : AppColors.primary,
-                            foregroundColor: g['isMember'] == true
-                                ? Colors.black87
-                                : Colors.white,
-                          ),
-                          child: Text(g['isMember'] == true ? 'Leave' : 'Join'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+      body: _buildGroupsList(),
       floatingActionButton: FloatingActionButton.small(
         backgroundColor: AppColors.primary,
         onPressed: _createGroup,
@@ -472,5 +457,71 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
     );
   }
-}
 
+  Widget _buildGroupsList() {
+    if (_loadingGroups) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (_groupsError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+            const SizedBox(height: 12),
+            const Text('Could not load study groups'),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _fetchGroups, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+    if (_groups.isEmpty) {
+      return const Center(child: Text('No study groups yet — start one!'));
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      itemCount: _groups.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final g = _groups[index];
+        final isCreator = g['created_by'] == _myUserId;
+        final isMember = g['isMember'] == true;
+        return Card(
+          child: ListTile(
+            title: Text(g['name'] ?? ''),
+            subtitle: Text(
+              '${g['memberCount'] ?? 0} members',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isCreator)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    onPressed: () => _deleteGroup(g['id']),
+                  ),
+                OutlinedButton(
+                  onPressed: () => _toggleMembership(g),
+                  style: isMember
+                      ? OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.border),
+                        )
+                      : ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ).copyWith(
+                          side: WidgetStateProperty.all(BorderSide.none),
+                        ),
+                  child: Text(isMember ? 'Leave' : 'Join'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

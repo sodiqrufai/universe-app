@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
-import 'tabs/home_tab.dart';
+import 'tabs/feed_tab.dart';
 import 'tabs/explore_tab.dart';
-import 'tabs/community_tab.dart';
 import 'tabs/messages_tab.dart';
+import 'tabs/anonymous_tab.dart';
 import 'tabs/profile_tab.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
@@ -20,19 +20,19 @@ class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
   int _unreadCount = 0;
 
-  late final List<Widget> _tabs = [
-    const HomeTab(),
-    const ExploreTab(),
-    const CommunityTab(),
-    const MessagesTab(),
-    const ProfileTab(),
+  final _tabs = const [
+    FeedTab(),
+    ExploreTab(),
+    MessagesTab(),
+    AnonymousTab(),
+    ProfileTab(),
   ];
 
   final _titles = const [
-    'UniVerse',
+    'Feed',
     'Explore',
-    'Community',
     'Messages',
+    'Anonymous',
     'Profile',
   ];
 
@@ -117,9 +117,9 @@ class _MainShellState extends State<MainShell> {
         unselectedItemColor: AppColors.textMuted,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: Icon(Icons.dynamic_feed_outlined),
+            activeIcon: Icon(Icons.dynamic_feed),
+            label: 'Feed',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.explore_outlined),
@@ -127,14 +127,14 @@ class _MainShellState extends State<MainShell> {
             label: 'Explore',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             activeIcon: Icon(Icons.chat_bubble),
             label: 'Messages',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.masks_outlined),
+            activeIcon: Icon(Icons.masks),
+            label: 'Anonymous',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

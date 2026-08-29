@@ -18,13 +18,18 @@ import { ChatController } from './chat/chat.controller';
 import { NotificationsController } from './notifications/notifications.controller';
 import { NotificationsService } from './notifications/notifications.service';
 import { StoriesController } from './stories/stories.controller';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]), // 30 requests/min default, override per-route below
   ],
   controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController, ServicesController, EventsController, ChatController, NotificationsController, StoriesController],
-  providers: [AppService, NotificationsService],
+  providers: [AppService, NotificationsService,
+  { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

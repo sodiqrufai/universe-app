@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
+import 'story_carousel.dart';
 
 /// Feed: the public campus feed, with announcements pinned above the
 /// post list. Replaces the old HomeTab dashboard — this is the landing
@@ -19,6 +20,7 @@ class _FeedTabState extends State<FeedTab> {
   List<dynamic> _announcements = [];
   bool _loading = true;
   bool _hasError = false;
+  final _storyKey = GlobalKey<StoryCarouselState>();
 
   @override
   void initState() {
@@ -126,22 +128,38 @@ class _FeedTabState extends State<FeedTab> {
       );
     }
     return RefreshIndicator(
-      onRefresh: _fetchAll,
+      onRefresh: () async {
+        await Future.wait([
+          _fetchAll(),
+          _storyKey.currentState?.refresh() ?? Future.value(),
+        ]);
+      },
       color: AppColors.primary,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+        padding: const EdgeInsets.only(top: 12, bottom: 90),
         children: [
-          if (_announcements.isNotEmpty) ...[
-            ..._announcements.map(_buildAnnouncementCard),
-            const SizedBox(height: 8),
-          ],
-          if (_posts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 80),
-              child: Center(child: Text('No posts yet — be the first to share something!')),
-            )
-          else
-            ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),
+          StoryCarousel(key: _storyKey),
+          const SizedBox(height: AppSpacing.md),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                if (_announcements.isNotEmpty) ...[
+                  ..._announcements.map(_buildAnnouncementCard),
+                  const SizedBox(height: 8),
+                ],
+                if (_posts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 80),
+                    child: Center(
+                      child: Text('No posts yet — be the first to share something!'),
+                    ),
+                  )
+                else
+                  ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),
+              ],
+            ),
+          ),
         ],
       ),
     );

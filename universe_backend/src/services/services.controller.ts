@@ -79,6 +79,7 @@ export class ServicesController {
     @Body() body: { title: string; description: string; price: string; priceType: string; categoryId: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     if (!body.title?.trim()) return { success: false, error: 'Title is required' };
 
@@ -204,18 +205,14 @@ export class ServicesController {
   }
 
   @Post('listings/:id/report')
-  async reportService(
-    @Headers('authorization') authHeader: string,
-    @Param('id') id: string,
-    @Body() body: { reason: string },
-  ) {
+  async reportService(@Headers('authorization') authHeader: string, @Param('id') id: string, @Body() body: { reason: string }) {
     const user = await this.getUserFromToken(authHeader);
     if (!body.reason?.trim()) return { success: false, error: 'Reason required' };
 
+    const { data: service } = await this.supabase.client.from('services').select('provider_id').eq('id', id).single();
     const { error } = await this.supabase.client
-      .from('service_reports')
-      .insert({ service_id: id, reported_by: user.id, reason: body.reason.trim() });
-
+      .from('reports')
+      .insert({ target_type: 'service', target_id: id, reported_user_id: service?.provider_id ?? null, reported_by: user.id, reason: body.reason.trim() });
     if (error) return { success: false, error: error.message };
     return { success: true };
   }

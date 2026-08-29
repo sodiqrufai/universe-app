@@ -102,6 +102,7 @@ export class EventsController {
     @Body() body: { title: string; description: string; location: string; startsAt: string; categoryId: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     if (!body.title?.trim() || !body.startsAt) {
       return { success: false, error: 'Title and date/time are required' };
@@ -151,6 +152,7 @@ export class EventsController {
     @Body() body: { status: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     if (!['interested', 'going'].includes(body.status)) {
       return { success: false, error: 'Invalid RSVP status' };
@@ -196,19 +198,15 @@ export class EventsController {
     return { success: true };
   }
 
-  @Post(':id/report')
-  async reportEvent(
-    @Headers('authorization') authHeader: string,
-    @Param('id') id: string,
-    @Body() body: { reason: string },
-  ) {
+    @Post(':id/report')
+  async reportEvent(@Headers('authorization') authHeader: string, @Param('id') id: string, @Body() body: { reason: string }) {
     const user = await this.getUserFromToken(authHeader);
     if (!body.reason?.trim()) return { success: false, error: 'Reason required' };
 
+    const { data: event } = await this.supabase.client.from('events').select('organizer_id').eq('id', id).single();
     const { error } = await this.supabase.client
-      .from('event_reports')
-      .insert({ event_id: id, reported_by: user.id, reason: body.reason.trim() });
-
+      .from('reports')
+      .insert({ target_type: 'event', target_id: id, reported_user_id: event?.organizer_id ?? null, reported_by: user.id, reason: body.reason.trim() });
     if (error) return { success: false, error: error.message };
     return { success: true };
   }

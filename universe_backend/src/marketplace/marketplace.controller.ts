@@ -114,6 +114,7 @@ export class MarketplaceController {
     @Body() body: { title: string; description: string; price: string; condition: string; categoryId: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     if (!body.title?.trim() || !body.price) {
       return { success: false, error: 'Title and price are required' };
@@ -304,11 +305,25 @@ export class MarketplaceController {
     @Body() body: { reason: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
-    if (!body.reason?.trim()) return { success: false, error: 'Reason required' };
+    if (!body.reason?.trim()) {
+      return { success: false, error: 'Reason required' };
+    }
+
+    const { data: listing } = await this.supabase.client
+      .from('listings')
+      .select('seller_id')
+      .eq('id', id)
+      .single();
 
     const { error } = await this.supabase.client
-      .from('listing_reports')
-      .insert({ listing_id: id, reported_by: user.id, reason: body.reason.trim() });
+      .from('reports')
+      .insert({
+        target_type: 'listing',
+        target_id: id,
+        reported_user_id: listing?.seller_id ?? null,
+        reported_by: user.id,
+        reason: body.reason.trim(),
+      });
 
     if (error) return { success: false, error: error.message };
     return { success: true };

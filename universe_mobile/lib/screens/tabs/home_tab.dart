@@ -1,17 +1,21 @@
-import '../../../config/api_config.dart';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../theme/app_theme.dart';
-import '../../services/session_service.dart';
+import '../../services/api_service.dart';
 import '../anonymous_setup_screen.dart';
 import '../anonymous_feed_screen.dart';
-import '../marketplace_screen.dart';
-import '../events_screen.dart';
+import '../verification_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  final VoidCallback? onGoToEducation;
-  const HomeTab({super.key, this.onGoToEducation});
+  final VoidCallback? onGoToExplore;
+  final VoidCallback? onGoToCommunity;
+  final VoidCallback? onGoToMessages;
+
+  const HomeTab({
+    super.key,
+    this.onGoToExplore,
+    this.onGoToCommunity,
+    this.onGoToMessages,
+  });
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -35,16 +39,11 @@ class _HomeTabState extends State<HomeTab> {
       _loading = true;
       _hasError = false;
     });
-    final token = await SessionService.getToken();
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/home'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.get('/home');
       if (data['success'] == true) {
         setState(() {
-          _announcements = data['announcements'];
+          _announcements = data['announcements'] ?? [];
           _universityName = data['universityName'];
           _fullName = data['fullName'];
           _loading = false;
@@ -71,15 +70,10 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Future<void> _openAnonymous() async {
-    final token = await SessionService.getToken();
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/anonymous/profile'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    final data = jsonDecode(response.body);
-    final hasProfile = data['success'] == true && data['profile'] != null;
-
-    if (mounted) {
+    try {
+      final data = await ApiService.get('/anonymous/profile');
+      final hasProfile = data['success'] == true && data['profile'] != null;
+      if (!mounted) return;
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => hasProfile
@@ -87,7 +81,16 @@ class _HomeTabState extends State<HomeTab> {
               : const AnonymousSetupScreen(),
         ),
       );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open Anonymous right now')),
+      );
     }
+  }
+
+  void _push(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   @override
@@ -103,9 +106,9 @@ class _HomeTabState extends State<HomeTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
+            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
             const SizedBox(height: 12),
-            const Text('Could not load your feed'),
+            const Text('Could not load your home screen'),
             const SizedBox(height: 12),
             ElevatedButton(onPressed: _fetchHome, child: const Text('Retry')),
           ],
@@ -117,7 +120,12 @@ class _HomeTabState extends State<HomeTab> {
       onRefresh: _fetchHome,
       color: AppColors.primary,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
         children: [
           Text(
             '${_greeting()}, ${_fullName?.split(' ').first ?? 'there'} 👋',
@@ -129,30 +137,52 @@ class _HomeTabState extends State<HomeTab> {
           ),
           if (_universityName != null)
             Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 16),
+              padding: const EdgeInsets.only(top: 4),
               child: Text(
                 _universityName!,
-                style: const TextStyle(fontSize: 14, color: Colors.black54),
+                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
             ),
-          _buildShortcuts(),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
+          _buildHeroCard(),
+          const SizedBox(height: AppSpacing.xxl),
           const Text(
-            'Announcements',
+            'Everything you need',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 12),
-          if (_announcements.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: Text('No announcements yet — check back soon.'),
+          const SizedBox(height: 4),
+          const Text(
+            'One app for your whole campus life.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md + 2),
+          _buildFeatureGrid(),
+          const SizedBox(height: AppSpacing.xxl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Announcements',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            )
+              if (_announcements.isNotEmpty)
+                Text(
+                  '${_announcements.length}',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_announcements.isEmpty)
+            _buildEmptyAnnouncements()
           else
             ..._announcements.map((a) => _buildAnnouncementCard(a)),
         ],
@@ -160,57 +190,180 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _buildShortcuts() {
-    final shortcuts = [
-      {'icon': Icons.school_outlined, 'label': 'Education'},
-      {'icon': Icons.storefront_outlined, 'label': 'Marketplace'},
-      {'icon': Icons.masks_outlined, 'label': 'Anonymous'},
-      {'icon': Icons.event_outlined, 'label': 'Events'},
+  Widget _buildHeroCard() {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryDark],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.large),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'One App.\nEvery Student.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Explore, connect, and get things done — all in one place.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ElevatedButton(
+                  onPressed: () => _push(const VerificationScreen()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                  ),
+                  child: const Text('Verification status'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(
+            Icons.auto_awesome,
+            color: Colors.white.withValues(alpha: 0.5),
+            size: 56,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureGrid() {
+    final features = [
+      {
+        'icon': Icons.explore_outlined,
+        'label': 'Explore',
+        'desc': 'Courses, events, services & marketplace',
+        'onTap': () => widget.onGoToExplore?.call(),
+      },
+      {
+        'icon': Icons.forum_outlined,
+        'label': 'Community',
+        'desc': 'Feed & anonymous space',
+        'onTap': () => widget.onGoToCommunity?.call(),
+      },
+      {
+        'icon': Icons.chat_bubble_outline,
+        'label': 'Messages',
+        'desc': 'Your conversations',
+        'onTap': () => widget.onGoToMessages?.call(),
+      },
+      {
+        'icon': Icons.verified_user_outlined,
+        'label': 'Verification',
+        'desc': 'Confirm your student status',
+        'onTap': () => _push(const VerificationScreen()),
+      },
     ];
-    return GridView.count(
-      crossAxisCount: 4,
+
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: shortcuts.map((s) {
-        return GestureDetector(
-          onTap: () {
-            final label = s['label'];
-            if (label == 'Anonymous') {
-              _openAnonymous();
-            } else if (label == 'Marketplace') {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MarketplaceScreen()),
-              );
-            } else if (label == 'Events') {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const EventsScreen()));
-            } else if (label == 'Education') {
-              widget.onGoToEducation?.call();
-            }
-          },
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                child: Icon(s['icon'] as IconData, color: AppColors.primary),
-              ),
-              const SizedBox(height: 6),
-              Text(s['label'] as String, style: const TextStyle(fontSize: 11)),
-            ],
+      itemCount: features.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: AppSpacing.md,
+        crossAxisSpacing: AppSpacing.md,
+        childAspectRatio: 1.5,
+      ),
+      itemBuilder: (context, i) {
+        final f = features[i];
+        return InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          onTap: f['onTap'] as void Function(),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.lightPurple,
+                  child: Icon(
+                    f['icon'] as IconData,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  f['label'] as String,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  f['desc'] as String,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
           ),
         );
-      }).toList(),
+      },
+    );
+  }
+
+  Widget _buildEmptyAnnouncements() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.campaign_outlined, size: 32, color: AppColors.textMuted),
+          SizedBox(height: 8),
+          Text(
+            'No announcements yet — check back soon.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildAnnouncementCard(dynamic a) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -223,14 +376,14 @@ class _HomeTabState extends State<HomeTab> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                     child: const Text(
                       'UniVerse',
                       style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.accent,
+                        color: AppColors.warning,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -239,13 +392,13 @@ class _HomeTabState extends State<HomeTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              a['title'],
+              a['title'] ?? '',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
             const SizedBox(height: 4),
             Text(
-              a['body'],
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
+              a['body'] ?? '',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -253,4 +406,3 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 }
-

@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import 'tabs/home_tab.dart';
-import 'tabs/education_tab.dart';
-import 'tabs/services_tab.dart';
-import 'tabs/campus_feed_tab.dart';
+import 'tabs/explore_tab.dart';
+import 'tabs/community_tab.dart';
+import 'tabs/messages_tab.dart';
 import 'tabs/profile_tab.dart';
 import 'notifications_screen.dart';
-import 'my_bookings_screen.dart';
-import 'chat_inbox_screen.dart';
 import 'settings_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -23,18 +21,22 @@ class _MainShellState extends State<MainShell> {
   int _unreadCount = 0;
 
   late final List<Widget> _tabs = [
-    HomeTab(onGoToEducation: () => setState(() => _currentIndex = 1)),
-    const EducationTab(),
-    const ServicesTab(),
-    const CampusFeedTab(),
+    HomeTab(
+      onGoToExplore: () => setState(() => _currentIndex = 1),
+      onGoToCommunity: () => setState(() => _currentIndex = 2),
+      onGoToMessages: () => setState(() => _currentIndex = 3),
+    ),
+    const ExploreTab(),
+    const CommunityTab(),
+    const MessagesTab(),
     const ProfileTab(),
   ];
 
   final _titles = const [
     'UniVerse',
-    'Education',
-    'Services',
-    'Campus Feed',
+    'Explore',
+    'Community',
+    'Messages',
     'Profile',
   ];
 
@@ -61,24 +63,6 @@ class _MainShellState extends State<MainShell> {
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
         actions: [
-          if (_currentIndex == 2)
-            IconButton(
-              icon: const Icon(Icons.event_note_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
-                );
-              },
-            ),
-          if (_currentIndex == 3)
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ChatInboxScreen()),
-                );
-              },
-            ),
           if (_currentIndex == 4)
             IconButton(
               icon: const Icon(Icons.settings_outlined),
@@ -109,7 +93,7 @@ class _MainShellState extends State<MainShell> {
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.error,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(
@@ -134,7 +118,7 @@ class _MainShellState extends State<MainShell> {
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.black45,
+        unselectedItemColor: AppColors.textMuted,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -142,19 +126,19 @@ class _MainShellState extends State<MainShell> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.school_outlined),
-            activeIcon: Icon(Icons.school),
-            label: 'Education',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined),
-            activeIcon: Icon(Icons.grid_view),
-            label: 'Services',
+            icon: Icon(Icons.explore_outlined),
+            activeIcon: Icon(Icons.explore),
+            label: 'Explore',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.forum_outlined),
             activeIcon: Icon(Icons.forum),
-            label: 'Campus Feed',
+            label: 'Community',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: 'Messages',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

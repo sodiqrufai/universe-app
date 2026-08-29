@@ -6,16 +6,7 @@ import '../anonymous_feed_screen.dart';
 import '../verification_screen.dart';
 
 class HomeTab extends StatefulWidget {
-  final VoidCallback? onGoToExplore;
-  final VoidCallback? onGoToCommunity;
-  final VoidCallback? onGoToMessages;
-
-  const HomeTab({
-    super.key,
-    this.onGoToExplore,
-    this.onGoToCommunity,
-    this.onGoToMessages,
-  });
+  const HomeTab({super.key});
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -146,22 +137,6 @@ class _HomeTabState extends State<HomeTab> {
           const SizedBox(height: AppSpacing.xl),
           _buildHeroCard(),
           const SizedBox(height: AppSpacing.xxl),
-          const Text(
-            'Everything you need',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'One app for your whole campus life.',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.md + 2),
-          _buildFeatureGrid(),
-          const SizedBox(height: AppSpacing.xxl),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -248,92 +223,6 @@ class _HomeTabState extends State<HomeTab> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFeatureGrid() {
-    final features = [
-      {
-        'icon': Icons.explore_outlined,
-        'label': 'Explore',
-        'desc': 'Courses, events, services & marketplace',
-        'onTap': () => widget.onGoToExplore?.call(),
-      },
-      {
-        'icon': Icons.forum_outlined,
-        'label': 'Community',
-        'desc': 'Feed & anonymous space',
-        'onTap': () => widget.onGoToCommunity?.call(),
-      },
-      {
-        'icon': Icons.chat_bubble_outline,
-        'label': 'Messages',
-        'desc': 'Your conversations',
-        'onTap': () => widget.onGoToMessages?.call(),
-      },
-      {
-        'icon': Icons.verified_user_outlined,
-        'label': 'Verification',
-        'desc': 'Confirm your student status',
-        'onTap': () => _push(const VerificationScreen()),
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: features.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacing.md,
-        crossAxisSpacing: AppSpacing.md,
-        childAspectRatio: 1.5,
-      ),
-      itemBuilder: (context, i) {
-        final f = features[i];
-        return InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          onTap: f['onTap'] as void Function(),
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.lightPurple,
-                  child: Icon(
-                    f['icon'] as IconData,
-                    color: AppColors.primary,
-                    size: 18,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  f['label'] as String,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  f['desc'] as String,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 

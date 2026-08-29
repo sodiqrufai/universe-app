@@ -150,6 +150,11 @@ class _ProfileTabState extends State<ProfileTab> {
             label: 'My Events',
             onTap: () => _push(const MyEventsScreen()),
           ),
+          _buildShortcut(
+            icon: Icons.verified_user_outlined,
+            label: 'Verification',
+            onTap: () => _push(const VerificationScreen()),
+          ),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () async {

@@ -21,11 +21,7 @@ class _MainShellState extends State<MainShell> {
   int _unreadCount = 0;
 
   late final List<Widget> _tabs = [
-    HomeTab(
-      onGoToExplore: () => setState(() => _currentIndex = 1),
-      onGoToCommunity: () => setState(() => _currentIndex = 2),
-      onGoToMessages: () => setState(() => _currentIndex = 3),
-    ),
+    const HomeTab(),
     const ExploreTab(),
     const CommunityTab(),
     const MessagesTab(),

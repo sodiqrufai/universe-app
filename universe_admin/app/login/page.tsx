@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '../../lib/apiConfig';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,7 +15,12 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('${ApiConfig.baseUrl}/auth/login', {
+      // Bug fix: this previously used single quotes around
+      // '${API_BASE_URL}/auth/login', which is a literal string, not a
+      // template-literal substitution — every login attempt fetched an
+      // invalid URL and always failed. Needs backticks, and the
+      // constant now actually exists and is imported.
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -24,9 +30,9 @@ export default function LoginPage() {
         localStorage.setItem('admin_token', data.accessToken);
         router.push('/dashboard');
       } else {
-        setError(data.error || 'Login failed');
+        setError(data.error || data.message || 'Login failed');
       }
-    } catch (e) {
+    } catch {
       setError('Could not connect to server');
     } finally {
       setLoading(false);
@@ -34,32 +40,34 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-2xl shadow-sm w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">UniVerse Admin</h1>
-        <p className="text-gray-500 mb-6">Sign in to manage the platform.</p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="bg-surface p-8 rounded-2xl border border-border w-full max-w-sm">
+        <h1 className="text-2xl font-bold text-foreground mb-1">UniVerse Admin</h1>
+        <p className="text-text-secondary mb-6">Sign in to manage the platform.</p>
 
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+          className="w-full border border-border rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-primary"
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+          className="w-full border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
         />
 
-        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+        {error && <p className="text-error text-sm mb-3">{error}</p>}
 
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full bg-indigo-700 text-white rounded-lg py-2 font-semibold hover:bg-indigo-800 disabled:opacity-50"
+          className="w-full bg-primary text-white rounded-lg py-2 font-semibold hover:bg-primary-dark disabled:opacity-50 transition"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>

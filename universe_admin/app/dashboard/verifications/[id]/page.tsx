@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { adminApi } from '../../../../lib/adminApi';
 
 type VerificationDetail = {
   id: string;
@@ -25,35 +26,35 @@ export default function VerificationDetailPage() {
   const id = params.id as string;
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    load(token);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const load = async (token: string) => {
+  const load = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const [pendingRes, docRes] = await Promise.all([
-        fetch('${ApiConfig.baseUrl}/admin/verifications/pending', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/document-url`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      // No dedicated GET /admin/verifications/:id endpoint exists yet —
+      // the only way to fetch one is within the pending list, same
+      // approach the original page used. This means a verification
+      // that's already been approved/rejected by someone else won't be
+      // found here; that's a real backend gap, not something fixable
+      // from this page alone.
+      const [pendingData, docData] = await Promise.all([
+        adminApi.get('/admin/verifications/pending'),
+        adminApi.get(`/admin/verifications/${id}/document-url`),
       ]);
-      const pendingData = await pendingRes.json();
-      const docData = await docRes.json();
 
       if (pendingData.success) {
         const found = pendingData.verifications.find((v: VerificationDetail) => v.id === id);
         setVerification(found ?? null);
+      } else {
+        setError(pendingData.error || 'Failed to load');
       }
       if (docData.success) {
         setDocumentUrl(docData.url);
       }
-    } catch (e) {
+    } catch {
       setError('Could not load verification details');
     } finally {
       setLoading(false);
@@ -62,19 +63,15 @@ export default function VerificationDetailPage() {
 
   const handleApprove = async () => {
     setProcessing(true);
-    const token = localStorage.getItem('admin_token');
+    setError(null);
     try {
-      const res = await fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/approve`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await adminApi.patch(`/admin/verifications/${id}/approve`);
       if (data.success) {
-        router.push('/dashboard');
+        router.push('/dashboard/verifications');
       } else {
         setError(data.error || 'Failed to approve');
       }
-    } catch (e) {
+    } catch {
       setError('Could not connect to server');
     } finally {
       setProcessing(false);
@@ -87,41 +84,52 @@ export default function VerificationDetailPage() {
       return;
     }
     setProcessing(true);
-    const token = localStorage.getItem('admin_token');
+    setError(null);
     try {
-      const res = await fetch(`${ApiConfig.baseUrl}/admin/verifications/${id}/reject`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ reason: rejectReason }),
+      const data = await adminApi.patch(`/admin/verifications/${id}/reject`, {
+        reason: rejectReason,
       });
-      const data = await res.json();
       if (data.success) {
-        router.push('/dashboard');
+        router.push('/dashboard/verifications');
       } else {
         setError(data.error || 'Failed to reject');
       }
-    } catch (e) {
+    } catch {
       setError('Could not connect to server');
     } finally {
       setProcessing(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-gray-500">Loading...</div>;
-  if (!verification) return <div className="p-8 text-red-500">Verification not found</div>;
+  if (loading) return <div className="p-8 text-text-secondary">Loading...</div>;
+  if (!verification) {
+    return (
+      <div className="p-8">
+        <p className="text-error mb-3">
+          Verification not found — it may have already been reviewed by someone else.
+        </p>
+        <button
+          onClick={() => router.push('/dashboard/verifications')}
+          className="text-primary font-semibold"
+        >
+          ← Back to list
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm p-6">
-        <button onClick={() => router.push('/dashboard')} className="text-indigo-700 mb-4">
+    <div className="p-8">
+      <div className="max-w-2xl bg-surface border border-border rounded-2xl p-6">
+        <button
+          onClick={() => router.push('/dashboard/verifications')}
+          className="text-primary mb-4 font-medium"
+        >
           ← Back to list
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">{verification.full_name}</h1>
-        <p className="text-gray-500 mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-1">{verification.full_name}</h1>
+        <p className="text-text-secondary mb-6">
           {verification.matric_number} • {verification.universities?.name ?? 'Unknown university'}
         </p>
 
@@ -129,25 +137,25 @@ export default function VerificationDetailPage() {
           <img
             src={documentUrl}
             alt="Student ID"
-            className="w-full rounded-xl border border-gray-200 mb-6"
+            className="w-full rounded-xl border border-border mb-6"
           />
         )}
 
-        {error && <p className="text-red-500 mb-4">{error}</p>}
+        {error && <p className="text-error mb-4">{error}</p>}
 
         {!showRejectBox ? (
           <div className="flex gap-3">
             <button
               onClick={handleApprove}
               disabled={processing}
-              className="flex-1 bg-green-600 text-white rounded-lg py-2 font-semibold hover:bg-green-700 disabled:opacity-50"
+              className="flex-1 bg-success text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50 transition"
             >
               {processing ? 'Processing...' : 'Approve'}
             </button>
             <button
               onClick={() => setShowRejectBox(true)}
               disabled={processing}
-              className="flex-1 bg-red-600 text-white rounded-lg py-2 font-semibold hover:bg-red-700 disabled:opacity-50"
+              className="flex-1 bg-error text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50 transition"
             >
               Reject
             </button>
@@ -158,20 +166,20 @@ export default function VerificationDetailPage() {
               placeholder="Reason for rejection..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full border border-border rounded-lg px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-error"
               rows={3}
             />
             <div className="flex gap-3">
               <button
                 onClick={handleReject}
                 disabled={processing}
-                className="flex-1 bg-red-600 text-white rounded-lg py-2 font-semibold hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 bg-error text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50 transition"
               >
                 {processing ? 'Processing...' : 'Confirm Rejection'}
               </button>
               <button
                 onClick={() => setShowRejectBox(false)}
-                className="flex-1 bg-gray-200 text-gray-800 rounded-lg py-2 font-semibold hover:bg-gray-300"
+                className="flex-1 bg-light-purple text-foreground rounded-lg py-2 font-semibold hover:opacity-80 transition"
               >
                 Cancel
               </button>

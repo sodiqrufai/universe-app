@@ -1,83 +1,77 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { adminApi } from '../../lib/adminApi';
 
-type Verification = {
-  id: string;
-  full_name: string;
-  matric_number: string;
-  status: string;
-  created_at: string;
-  universities: { name: string } | null;
+type Stats = {
+  totalStudents: number;
+  pendingVerifications: number;
+  openReports: number;
+  activeListings: number;
+  activeEvents: number;
 };
 
-export default function DashboardPage() {
-  const [verifications, setVerifications] = useState<Verification[]>([]);
+export default function DashboardOverviewPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    fetchPending(token);
+    fetchStats();
   }, []);
 
-  const fetchPending = async (token: string) => {
+  const fetchStats = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('${ApiConfig.baseUrl}/admin/verifications/pending', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await adminApi.get('/admin/dashboard');
       if (data.success) {
-        setVerifications(data.verifications);
+        setStats(data.stats);
       } else {
-        setError(data.error || data.message || 'Failed to load');
+        setError(data.error || 'Failed to load dashboard');
       }
-    } catch (e) {
+    } catch {
       setError('Could not connect to server');
     } finally {
       setLoading(false);
     }
   };
 
+  const cards = stats
+    ? [
+        { label: 'Total Students', value: stats.totalStudents, color: 'text-primary' },
+        { label: 'Pending Verifications', value: stats.pendingVerifications, color: 'text-warning' },
+        { label: 'Open Reports', value: stats.openReports, color: 'text-error' },
+        { label: 'Active Listings', value: stats.activeListings, color: 'text-success' },
+        { label: 'Active Events', value: stats.activeEvents, color: 'text-info' },
+      ]
+    : [];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Pending Verifications</h1>
-        <p className="text-gray-500 mb-6">Review and approve student verification requests.</p>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold text-foreground mb-1">Overview</h1>
+      <p className="text-text-secondary mb-6">Platform snapshot, right now.</p>
 
-        {loading && <p className="text-gray-500">Loading...</p>}
-        {error && <p className="text-red-500">{error}</p>}
+      {loading && <p className="text-text-secondary">Loading...</p>}
+      {error && (
+        <div className="bg-error/10 text-error rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchStats} className="font-semibold underline">
+            Retry
+          </button>
+        </div>
+      )}
 
-        {!loading && !error && verifications.length === 0 && (
-          <p className="text-gray-500">No pending verifications right now.</p>
-        )}
-
-        <div className="space-y-3">
-          {verifications.map((v) => (
-            <div
-              key={v.id}
-              onClick={() => router.push(`/dashboard/${v.id}`)}
-              className="bg-white p-4 rounded-xl shadow-sm cursor-pointer hover:shadow-md transition flex justify-between items-center"
-            >
-              <div>
-                <p className="font-semibold text-gray-900">{v.full_name}</p>
-                <p className="text-sm text-gray-500">
-                  {v.matric_number} • {v.universities?.name ?? 'Unknown university'}
-                </p>
-              </div>
-              <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full">
-                Pending
-              </span>
+      {!loading && !error && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {cards.map((c) => (
+            <div key={c.label} className="bg-surface border border-border rounded-2xl p-5">
+              <p className={`text-3xl font-bold ${c.color}`}>{c.value}</p>
+              <p className="text-sm text-text-secondary mt-1">{c.label}</p>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

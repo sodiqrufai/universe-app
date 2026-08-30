@@ -1,26 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafc;
+  --foreground: #15152a;
+
+  /* UniVerse brand tokens — mirrors universe_mobile/lib/theme/app_theme.dart
+     exactly, so the admin panel and student app read as one product. */
+  --color-primary: #4f2ccf;
+  --color-primary-dark: #2d1b8c;
+  --color-secondary: #6d4aff;
+  --color-light-purple: #f0ecff;
+  --color-surface: #ffffff;
+  --color-text-secondary: #6f7080;
+  --color-text-muted: #9999a8;
+  --color-border: #e8e8f0;
+  --color-success: #2e9b62;
+  --color-warning: #e9a23b;
+  --color-error: #d9534f;
+  --color-info: #4a7fe5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-secondary: var(--color-secondary);
+  --color-light-purple: var(--color-light-purple);
+  --color-surface: var(--color-surface);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-border: var(--color-border);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-info: var(--color-info);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }

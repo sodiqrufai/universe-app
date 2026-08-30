@@ -1,0 +1,1 @@
+update reports set reported_user_id = null where target_type = 'anonymous_post';

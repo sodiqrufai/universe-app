@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/state_views.dart';
 import 'chat_detail_screen.dart';
 import 'listing_detail_screen.dart';
 
@@ -15,6 +16,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> _notifications = [];
   bool _loading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -25,6 +27,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _fetch() async {
     setState(() {
       _loading = true;
+      _hasError = false;
     });
     try {
       final data = await ApiService.get('/notifications');
@@ -34,6 +37,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       setState(() {
+        _hasError = true;
         _loading = false;
       });
     }
@@ -102,11 +106,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
+          ? const LoadingView()
+          : _hasError
+          ? ErrorView(message: 'Could not load notifications', onRetry: _fetch)
           : _notifications.isEmpty
-          ? const Center(child: Text('No notifications yet'))
+          ? const EmptyView(
+              icon: Icons.notifications_none,
+              title: 'No notifications yet',
+            )
           : RefreshIndicator(
               onRefresh: _fetch,
               color: AppColors.primary,
@@ -150,7 +157,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           timeLabel,
                           style: const TextStyle(
                             fontSize: 10,
-                            color: Colors.black45,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                         if (isUnread)

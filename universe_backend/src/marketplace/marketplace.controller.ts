@@ -65,7 +65,17 @@ export class MarketplaceController {
     const { data, error } = await query;
     if (error) return { success: false, error: error.message };
 
-    const listingIds = (data ?? []).map((l) => l.id);
+    const { data: blocks } = await this.supabase.client
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+
+    const blockedSellerIds = new Set(
+      (blocks ?? []).map((b) => (b.blocker_id === user.id ? b.blocked_id : b.blocker_id)),
+    );
+    const listings = (data ?? []).filter((l: any) => !blockedSellerIds.has(l.seller_id));
+
+    const listingIds = listings.map((l) => l.id);
     let savedSet = new Set<string>();
     if (listingIds.length > 0) {
       const { data: saved } = await this.supabase.client
@@ -76,7 +86,7 @@ export class MarketplaceController {
       saved?.forEach((s) => savedSet.add(s.listing_id));
     }
 
-    const enriched = (data ?? []).map((l: any) => ({
+    const enriched = listings.map((l: any) => ({
       ...l,
       isSaved: savedSet.has(l.id),
     }));

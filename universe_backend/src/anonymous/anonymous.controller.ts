@@ -362,31 +362,17 @@ export class AnonymousController {
       };
     }
 
-    const { data: post } = await this.supabase.client
-      .from('anonymous_posts')
-      .select('anonymous_profile_id')
-      .eq('id', id)
-      .single();
-
-    let reportedUserId: string | null = null;
-
-    if (post?.anonymous_profile_id) {
-      const { data: anonymousProfile } =
-        await this.supabase.client
-          .from('anonymous_profiles')
-          .select('user_id')
-          .eq('id', post.anonymous_profile_id)
-          .single();
-
-      reportedUserId = anonymousProfile?.user_id ?? null;
-    }
-
+    // Intentionally NOT resolving anonymous_profile_id -> user_id here anymore.
+    // The real identity behind an anonymous post is never written to the reports
+    // table at all now — it's only ever computed on demand, transiently, by
+    // super_admin via POST /admin/reports/:id/reveal-identity, with a required
+    // reason and an audit log entry. Do not reintroduce that lookup here.
     const { error } = await this.supabase.client
       .from('reports')
       .insert({
         target_type: 'anonymous_post',
         target_id: id,
-        reported_user_id: reportedUserId,
+        reported_user_id: null,
         reported_by: user.id,
         reason: body.reason.trim(),
       });

@@ -1,11 +1,13 @@
-import '../../config/api_config.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
+import '../widgets/state_views.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -23,6 +25,7 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   List<dynamic> _messages = [];
   bool _loading = true;
+  bool _hasError = false;
   String? _myUserId;
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
@@ -47,17 +50,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (!silent) {
       setState(() {
         _loading = true;
+        _hasError = false;
       });
     }
-    final token = await SessionService.getToken();
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages',
-        ),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.get('/chat/${widget.conversationId}/messages');
       if (data['success'] == true) {
         final newMessages = data['messages'] ?? [];
         final shouldScroll = newMessages.length != _messages.length;
@@ -66,15 +63,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           _loading = false;
         });
         if (shouldScroll) _scrollToBottom();
-      } else {
+      } else if (!silent) {
         setState(() {
+          _hasError = true;
           _loading = false;
         });
       }
     } catch (e) {
-      setState(() {
-        _loading = false;
-      });
+      // A silent background poll failing shouldn't flash an error screen
+      // over an otherwise-working chat — only the initial load does.
+      if (!silent) {
+        setState(() {
+          _hasError = true;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -93,35 +96,48 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _sendMessage({String? imagePath}) async {
     if (_messageController.text.trim().isEmpty && imagePath == null) return;
 
-    final token = await SessionService.getToken();
     final text = _messageController.text.trim();
     _messageController.clear();
 
+    // Multipart (for the optional image attachment) — ApiService has no
+    // file-upload method, same legitimate exception as Course's resource
+    // upload, still using the same token source as everywhere else.
     try {
+      final token = await SessionService.getToken();
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse(
-          '${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages',
-        ),
+        Uri.parse('${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages'),
       );
       request.headers['Authorization'] = 'Bearer $token';
       if (text.isNotEmpty) request.fields['content'] = text;
       if (imagePath != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath('attachment', imagePath),
+        request.files.add(await http.MultipartFile.fromPath('attachment', imagePath));
+      }
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+
+      if (data['success'] == true) {
+        await _fetchMessages();
+      } else if (mounted) {
+        _messageController.text = text;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Message not sent')),
         );
       }
-      await request.send();
-      await _fetchMessages();
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        _messageController.text = text;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Message not sent — check your connection')));
+      }
+    }
   }
 
   Future<void> _pickAndSendImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked != null) {
       await _sendMessage(imagePath: picked.path);
     }
@@ -130,29 +146,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Future<void> _showOptions() async {
     await showModalBottomSheet(
       context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.flag_outlined),
-            title: const Text('Report'),
-            onTap: () {
-              Navigator.pop(context);
-              _report();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.block, color: Colors.red),
-            title: const Text(
-              'Block user',
-              style: TextStyle(color: Colors.red),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: const Text('Report'),
+              onTap: () {
+                Navigator.pop(context);
+                _report();
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-              _block();
-            },
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.block, color: AppColors.error),
+              title: const Text('Block user', style: TextStyle(color: AppColors.error)),
+              onTap: () {
+                Navigator.pop(context);
+                _block();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -162,6 +177,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         title: const Text('Report this conversation'),
         content: TextField(
           controller: reasonController,
@@ -173,30 +191,33 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.pop(context, reasonController.text.trim()),
+            onPressed: () => Navigator.pop(context, reasonController.text.trim()),
             child: const Text('Report'),
           ),
         ],
       ),
     );
     if (reason != null && reason.isNotEmpty) {
-      final token = await SessionService.getToken();
-      await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/chat/report'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
+      try {
+        final data = await ApiService.post('/chat/report', {
           'conversationId': widget.conversationId,
           'reason': reason,
-        }),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Report submitted')));
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                data['success'] == true ? 'Report submitted' : (data['error'] ?? 'Could not submit report'),
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not submit report')));
+        }
       }
     }
   }
@@ -210,6 +231,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         title: const Text('Block this user?'),
         content: const Text('They will no longer be able to message you.'),
         actions: [
@@ -218,6 +242,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Block'),
           ),
@@ -225,12 +250,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
     );
     if (confirm == true) {
-      final token = await SessionService.getToken();
-      await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/chat/block/$otherId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (mounted) Navigator.of(context).pop();
+      try {
+        final data = await ApiService.post('/chat/block/$otherId', {});
+        if (data['success'] == true && mounted) {
+          Navigator.of(context).pop();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['error'] ?? 'Could not block this user')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not block this user')));
+        }
+      }
     }
   }
 
@@ -248,90 +283,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showOptions,
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: _showOptions),
         ],
       ),
       body: Column(
         children: [
-          Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                : _messages.isEmpty
-                ? const Center(child: Text('Say hello 👋'))
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final m = _messages[index];
-                      final isMine = m['sender_id'] == _myUserId;
-                      return Align(
-                        alignment: isMine
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          padding: const EdgeInsets.all(10),
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isMine ? AppColors.primary : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (m['attachment_url'] != null)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    m['attachment_url'],
-                                    width: 180,
-                                  ),
-                                ),
-                              if (m['content'] != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    m['content'],
-                                    style: TextStyle(
-                                      color: isMine
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+          Expanded(child: _buildMessages()),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.image_outlined,
-                      color: AppColors.primary,
-                    ),
+                    icon: const Icon(Icons.image_outlined, color: AppColors.primary),
                     onPressed: _pickAndSendImage,
                   ),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
-                      decoration: const InputDecoration(
-                        hintText: 'Type a message...',
-                      ),
+                      decoration: const InputDecoration(hintText: 'Type a message...'),
                     ),
                   ),
                   IconButton(
@@ -346,5 +316,61 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
     );
   }
-}
 
+  Widget _buildMessages() {
+    if (_loading) return const LoadingView();
+    if (_hasError) {
+      return ErrorView(message: 'Could not load this conversation', onRetry: _fetchMessages);
+    }
+    if (_messages.isEmpty) {
+      return const EmptyView(icon: Icons.waving_hand_outlined, title: 'Say hello 👋');
+    }
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final m = _messages[index];
+        final isMine = m['sender_id'] == _myUserId;
+        return Align(
+          alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.all(10),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+            decoration: BoxDecoration(
+              color: isMine ? AppColors.primary : AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: isMine ? null : Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (m['attachment_url'] != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
+                    child: Image.network(
+                      m['attachment_url'],
+                      width: 180,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.broken_image_outlined,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                if (m['content'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      m['content'],
+                      style: TextStyle(color: isMine ? Colors.white : AppColors.textPrimary),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

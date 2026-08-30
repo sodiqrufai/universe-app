@@ -1,12 +1,11 @@
-import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../theme/app_theme.dart';
-import '../services/session_service.dart';
+import '../services/api_service.dart';
+import '../widgets/state_views.dart';
 import 'faculty_selector_screen.dart';
-// import 'home_screen.dart';
-// import 'register_screen.dart';
 
 class University {
   final String id;
@@ -38,7 +37,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   List<University> _all = [];
   List<University> _filtered = [];
   bool _loading = true;
-  String? _error;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -47,27 +46,33 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   }
 
   Future<void> _fetchUniversities() async {
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
+    // /universities returns a bare JSON array, unlike the rest of the
+    // API's {success, ...} shape — ApiService assumes the latter, so
+    // this one endpoint stays on raw http rather than risk a type
+    // mismatch. Doesn't need auth, so no token handling needed either.
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/universities'),
-      );
+      final response = await http.get(Uri.parse('${ApiConfig.baseUrl}/universities'));
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
-        final list = data.map((e) => University.fromJson(e)).toList();
+        final universities = data.map((e) => University.fromJson(e)).toList();
         setState(() {
-          _all = list;
-          _filtered = list;
+          _all = universities;
+          _filtered = universities;
           _loading = false;
         });
       } else {
         setState(() {
-          _error = 'Server error: ${response.statusCode}';
+          _hasError = true;
           _loading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'Could not connect: $e';
+        _hasError = true;
         _loading = false;
       });
     }
@@ -81,12 +86,35 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
     });
   }
 
+  Future<void> _select(University u) async {
+    try {
+      final data = await ApiService.patch('/profile/update', {'universityId': u.id});
+      if (data['success'] == true) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => FacultySelectorScreen(universityId: u.id)),
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Failed to save university')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not save your university')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Select Your University')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -97,7 +125,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Expanded(child: _buildBody()),
           ],
         ),
@@ -106,18 +134,12 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   }
 
   Widget _buildBody() {
-    if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Text(_error!, style: const TextStyle(color: Colors.red)),
-      );
+    if (_loading) return const LoadingView();
+    if (_hasError) {
+      return ErrorView(message: 'Could not load universities', onRetry: _fetchUniversities);
     }
     if (_filtered.isEmpty) {
-      return const Center(child: Text('No universities found'));
+      return const EmptyView(icon: Icons.school_outlined, title: 'No universities found');
     }
     return ListView.separated(
       itemCount: _filtered.length,
@@ -131,53 +153,11 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
               child: Icon(Icons.school, color: Colors.white),
             ),
             title: Text(u.name),
-            subtitle: Text(
-              [u.shortName, u.city].where((x) => x != null).join(' • '),
-            ),
-            onTap: () async {
-              final token = await SessionService.getToken();
-              try {
-                final response = await http.patch(
-                  Uri.parse('${ApiConfig.baseUrl}/profile/update'),
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer $token',
-                  },
-                  body: jsonEncode({'universityId': u.id}),
-                );
-                final data = jsonDecode(response.body);
-                if (data['success'] == true) {
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            FacultySelectorScreen(universityId: u.id),
-                      ),
-                    );
-                  }
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          data['error'] ?? 'Failed to save university',
-                        ),
-                      ),
-                    );
-                  }
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                }
-              }
-            },
+            subtitle: Text([u.shortName, u.city].where((x) => x != null).join(' • ')),
+            onTap: () => _select(u),
           ),
         );
       },
     );
   }
 }
-

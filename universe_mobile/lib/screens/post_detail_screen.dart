@@ -1,9 +1,5 @@
-import '../../config/api_config.dart';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
-import '../services/session_service.dart';
 import '../services/api_service.dart';
 import 'chat_detail_screen.dart';
 
@@ -18,6 +14,7 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   List<dynamic> _comments = [];
   bool _loading = true;
+  bool _hasError = false;
   final _commentController = TextEditingController();
   bool _sending = false;
 
@@ -28,19 +25,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _fetchComments() async {
-    final token = await SessionService.getToken();
+    setState(() {
+      _loading = true;
+      _hasError = false;
+    });
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/comments'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.get('/posts/${widget.post['id']}/comments');
       setState(() {
         _comments = data['comments'] ?? [];
         _loading = false;
       });
     } catch (e) {
       setState(() {
+        _hasError = true;
         _loading = false;
       });
     }
@@ -48,57 +45,56 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   Future<void> _sendComment() async {
     if (_commentController.text.trim().isEmpty) return;
-    setState(() {
-      _sending = true;
-    });
-    final token = await SessionService.getToken();
+    setState(() => _sending = true);
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/comments'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'content': _commentController.text.trim()}),
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.post('/posts/${widget.post['id']}/comments', {
+        'content': _commentController.text.trim(),
+      });
       if (data['success'] == true) {
         _commentController.clear();
         _fetchComments();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Could not post comment')),
+        );
       }
     } catch (_) {
-    } finally {
       if (mounted) {
-        setState(() {
-          _sending = false;
-        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not post comment')));
       }
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<void> _messageAuthor() async {
     final authorId = widget.post['author_id'];
     if (authorId == null) return;
-
-    final data = await ApiService.post('/chat/direct', {
-      'otherUserId': authorId,
-    });
-    if (data['success'] == true && mounted) {
-      final profile = widget.post['profiles'];
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ChatDetailScreen(
-            conversationId: data['conversationId'],
-            title: profile?['full_name'] ?? 'Chat',
+    try {
+      final data = await ApiService.post('/chat/direct', {'otherUserId': authorId});
+      if (data['success'] == true && mounted) {
+        final profile = widget.post['profiles'];
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatDetailScreen(
+              conversationId: data['conversationId'],
+              title: profile?['full_name'] ?? 'Chat',
+            ),
           ),
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(data['error'] ?? 'Could not start conversation'),
-        ),
-      );
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Could not start conversation')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not start conversation')));
+      }
     }
   }
 
@@ -107,12 +103,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         title: const Text('Report this post'),
         content: TextField(
           controller: reasonController,
-          decoration: const InputDecoration(
-            hintText: 'Why are you reporting this?',
-          ),
+          decoration: const InputDecoration(hintText: 'Why are you reporting this?'),
         ),
         actions: [
           TextButton(
@@ -120,28 +117,32 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.pop(context, reasonController.text.trim()),
+            onPressed: () => Navigator.pop(context, reasonController.text.trim()),
             child: const Text('Report'),
           ),
         ],
       ),
     );
-
     if (reason != null && reason.isNotEmpty) {
-      final token = await SessionService.getToken();
-      await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}/report'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'reason': reason}),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Report submitted')));
+      try {
+        final data = await ApiService.post('/posts/${widget.post['id']}/report', {
+          'reason': reason,
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                data['success'] == true ? 'Report submitted' : (data['error'] ?? 'Could not submit report'),
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not submit report')));
+        }
       }
     }
   }
@@ -150,6 +151,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
         title: const Text('Delete this post?'),
         content: const Text('This cannot be undone.'),
         actions: [
@@ -158,6 +162,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
@@ -165,12 +170,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
     if (confirm == true) {
-      final token = await SessionService.getToken();
-      await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/posts/${widget.post['id']}'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (mounted) Navigator.of(context).pop();
+      try {
+        final data = await ApiService.delete('/posts/${widget.post['id']}');
+        if (data['success'] == true && mounted) {
+          Navigator.of(context).pop();
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['error'] ?? 'Could not delete post')),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Could not delete post')));
+        }
+      }
     }
   }
 
@@ -185,8 +200,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final profile = widget.post['profiles'];
     final name = profile?['full_name'] ?? 'Student';
     final avatarUrl = profile?['avatar_url'];
-    final myUserId =
-        null; // ownership check simplified: server enforces real permission
 
     return Scaffold(
       appBar: AppBar(
@@ -199,10 +212,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'report', child: Text('Report')),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Text('Delete (if yours)'),
-              ),
+              const PopupMenuItem(value: 'delete', child: Text('Delete (if yours)')),
             ],
           ),
         ],
@@ -211,32 +221,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
                 Row(
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.primary.withValues(
-                        alpha: 0.15,
-                      ),
-                      backgroundImage: avatarUrl != null
-                          ? NetworkImage(avatarUrl)
-                          : null,
+                      backgroundColor: AppColors.lightPurple,
+                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
                       child: avatarUrl == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 18,
-                              color: AppColors.primary,
-                            )
+                          ? const Icon(Icons.person, size: 18, color: AppColors.primary)
                           : null,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                      child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
                     ),
                     TextButton.icon(
                       onPressed: _messageAuthor,
@@ -245,19 +244,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.post['content'],
-                  style: const TextStyle(fontSize: 15),
-                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
                 if (widget.post['image_url'] != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
                     child: Image.network(
                       widget.post['image_url'],
                       fit: BoxFit.cover,
                       width: double.infinity,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 200,
+                          color: AppColors.lightPurple,
+                          child: const Center(
+                            child: CircularProgressIndicator(color: AppColors.primary),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, _, _) => Container(
+                        height: 200,
+                        color: AppColors.lightPurple,
+                        child: const Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
+                      ),
                     ),
                   ),
                 ],
@@ -266,82 +277,31 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   'Comments',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-                const SizedBox(height: 12),
-                if (_loading)
-                  const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                else if (_comments.isEmpty)
-                  const Text(
-                    'No comments yet — be the first to reply.',
-                    style: TextStyle(color: Colors.black54),
-                  )
-                else
-                  ..._comments.map((c) {
-                    final cProfile = c['profiles'];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: AppColors.primary.withValues(
-                              alpha: 0.15,
-                            ),
-                            backgroundImage: cProfile?['avatar_url'] != null
-                                ? NetworkImage(cProfile['avatar_url'])
-                                : null,
-                            child: cProfile?['avatar_url'] == null
-                                ? const Icon(
-                                    Icons.person,
-                                    size: 14,
-                                    color: AppColors.primary,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  cProfile?['full_name'] ?? 'Student',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Text(
-                                  c['content'],
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
+                const SizedBox(height: AppSpacing.md),
+                _buildComments(),
               ],
             ),
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _commentController,
-                      decoration: const InputDecoration(
-                        hintText: 'Write a comment...',
-                      ),
+                      decoration: const InputDecoration(hintText: 'Write a comment...'),
                     ),
                   ),
                   IconButton(
                     onPressed: _sending ? null : _sendComment,
-                    icon: const Icon(Icons.send, color: AppColors.primary),
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : const Icon(Icons.send, color: AppColors.primary),
                   ),
                 ],
               ),
@@ -351,5 +311,67 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     );
   }
-}
 
+  Widget _buildComments() {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+    if (_hasError) {
+      return Column(
+        children: [
+          const Text(
+            'Could not load comments',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: _fetchComments, child: const Text('Retry')),
+        ],
+      );
+    }
+    if (_comments.isEmpty) {
+      return const Text(
+        'No comments yet — be the first to reply.',
+        style: TextStyle(color: AppColors.textSecondary),
+      );
+    }
+    return Column(
+      children: _comments.map((c) {
+        final cProfile = c['profiles'];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.lightPurple,
+                backgroundImage: cProfile?['avatar_url'] != null
+                    ? NetworkImage(cProfile['avatar_url'])
+                    : null,
+                child: cProfile?['avatar_url'] == null
+                    ? const Icon(Icons.person, size: 14, color: AppColors.primary)
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cProfile?['full_name'] ?? 'Student',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    Text(c['content'], style: const TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}

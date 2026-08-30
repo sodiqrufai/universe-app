@@ -359,7 +359,81 @@ export class AdminController {
 
     const { data, error, count } = await query;
     if (error) return { success: false, error: error.message };
-    return { success: true, reports: data, total: count ?? 0, page: pageNum, pageSize: size };
+
+    // Anonymous-post reports must never expose the real identity behind the
+    // anonymous account through routine moderation browsing — this holds for
+    // every admin role, including super_admin. There is no passive path to this
+    // data by design; the only way to learn it is the explicit, audited
+    // POST /admin/reports/:id/reveal-identity endpoint, which requires a stated
+    // reason and is logged. Do not "fix" this by re-adding reported_user_id here.
+    const redacted = (data ?? []).map((r: any) =>
+      r.target_type === 'anonymous_post' ? { ...r, reported_user_id: null } : r,
+    );
+
+    return { success: true, reports: redacted, total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Post('reports/:id/reveal-identity')
+  async revealAnonymousIdentity(
+    @Headers('authorization') authHeader: string,
+    @Param('id') id: string,
+    @Body() body: { reason: string },
+  ) {
+    const admin = await this.getAdminFromToken(authHeader, 'super_admin');
+
+    if (!body.reason?.trim()) {
+      return { success: false, error: 'A reason is required to reveal an identity' };
+    }
+
+    const { data: report, error: reportError } = await this.supabase.client
+      .from('reports')
+      .select('id, target_type, target_id')
+      .eq('id', id)
+      .single();
+
+    if (reportError || !report) {
+      return { success: false, error: 'Report not found' };
+    }
+    if (report.target_type !== 'anonymous_post') {
+      return { success: false, error: 'This endpoint only applies to anonymous post reports' };
+    }
+
+    // Resolved on demand, never persisted — this is the only place in the
+    // codebase where an anonymous post's real author is looked up for
+    // moderation purposes, and every call is logged with a reason.
+    const { data: post } = await this.supabase.client
+      .from('anonymous_posts')
+      .select('anonymous_profile_id')
+      .eq('id', report.target_id)
+      .single();
+
+    if (!post?.anonymous_profile_id) {
+      return { success: false, error: 'Could not resolve the underlying anonymous post' };
+    }
+
+    const { data: anonymousProfile } = await this.supabase.client
+      .from('anonymous_profiles')
+      .select('user_id')
+      .eq('id', post.anonymous_profile_id)
+      .single();
+
+    if (!anonymousProfile?.user_id) {
+      return { success: false, error: 'Could not resolve the real identity' };
+    }
+
+    const { data: identity } = await this.supabase.client
+      .from('profiles')
+      .select('id, full_name, username, avatar_url')
+      .eq('id', anonymousProfile.user_id)
+      .single();
+
+    await this.logAction(admin.id, 'reveal_anonymous_identity', 'anonymous_post', report.target_id, {
+      reason: body.reason.trim(),
+      revealed_to: admin.id,
+      reportId: id,
+    });
+
+    return { success: true, identity };
   }
 
   @Patch('reports/:id')

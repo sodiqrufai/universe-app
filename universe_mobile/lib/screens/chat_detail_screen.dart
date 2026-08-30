@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
@@ -12,10 +13,14 @@ import '../widgets/state_views.dart';
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
   final String title;
+  final String? avatarUrl;
+  final bool isGroup;
   const ChatDetailScreen({
     super.key,
     required this.conversationId,
     required this.title,
+    this.avatarUrl,
+    this.isGroup = false,
   });
 
   @override
@@ -30,6 +35,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   Timer? _pollTimer;
+  bool _showEmojiPicker = false;
+
+  static const _emojis = [
+    '😀', '😂', '😍', '🥲', '😭', '😡', '🙏', '👍', '👎', '❤️',
+    '🔥', '🎉', '😴', '🤔', '😅', '😎', '🙄', '😢', '👏', '🥳',
+    '🤝', '💯', '😬', '😱', '🤣', '😊', '🙌', '✅', '❌', '⚠️',
+  ];
 
   @override
   void initState() {
@@ -281,19 +293,62 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.lightPurple,
+              backgroundImage: widget.avatarUrl != null ? NetworkImage(widget.avatarUrl!) : null,
+              child: widget.avatarUrl == null
+                  ? Icon(widget.isGroup ? Icons.groups : Icons.person, size: 16, color: AppColors.primary)
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(widget.title, overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
         actions: [
           IconButton(icon: const Icon(Icons.more_vert), onPressed: _showOptions),
         ],
       ),
       body: Column(
         children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: AppColors.lightPurple,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline, size: 12, color: AppColors.primary),
+                SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Messages are encrypted at rest. UniVerse staff may access chats when reviewing a safety report.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Expanded(child: _buildMessages()),
+          if (_showEmojiPicker) _buildEmojiGrid(),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: Icon(
+                      _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
+                      color: AppColors.primary,
+                    ),
+                    onPressed: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.image_outlined, color: AppColors.primary),
                     onPressed: _pickAndSendImage,
@@ -301,6 +356,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   Expanded(
                     child: TextField(
                       controller: _messageController,
+                      onTap: () {
+                        if (_showEmojiPicker) setState(() => _showEmojiPicker = false);
+                      },
                       decoration: const InputDecoration(hintText: 'Type a message...'),
                     ),
                   ),
@@ -313,6 +371,64 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _insertEmoji(String emoji) {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+    final cursor = selection.start >= 0 ? selection.start : text.length;
+    final newText = text.replaceRange(cursor, cursor, emoji);
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: cursor + emoji.length),
+    );
+  }
+
+  Widget _buildEmojiGrid() {
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.all(8),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
+        itemCount: _emojis.length,
+        itemBuilder: (context, i) => InkWell(
+          onTap: () => _insertEmoji(_emojis[i]),
+          child: Center(child: Text(_emojis[i], style: const TextStyle(fontSize: 22))),
+        ),
+      ),
+    );
+  }
+
+  void _openImageViewer(String url) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(
+                url,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.broken_image_outlined,
+                  color: Colors.white54,
+                  size: 60,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -347,14 +463,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (m['attachment_url'] != null)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(AppRadius.medium),
-                    child: Image.network(
-                      m['attachment_url'],
-                      width: 180,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.broken_image_outlined,
-                        color: AppColors.textMuted,
+                  GestureDetector(
+                    onTap: () => _openImageViewer(m['attachment_url']),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.medium),
+                      child: Image.network(
+                        m['attachment_url'],
+                        width: 180,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.broken_image_outlined,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ),
@@ -364,6 +483,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     child: Text(
                       m['content'],
                       style: TextStyle(color: isMine ? Colors.white : AppColors.textPrimary),
+                    ),
+                  ),
+                if (m['created_at'] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      DateFormat('h:mm a').format(DateTime.parse(m['created_at']).toLocal()),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isMine ? Colors.white70 : AppColors.textMuted,
+                      ),
                     ),
                   ),
               ],

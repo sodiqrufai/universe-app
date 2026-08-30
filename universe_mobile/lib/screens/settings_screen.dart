@@ -12,6 +12,11 @@ import 'anonymous_username_screen.dart';
 import 'blocked_users_screen.dart';
 import 'delete_account_screen.dart';
 import 'saved_listings_screen.dart';
+import 'change_password_screen.dart';
+import 'language_screen.dart';
+import 'help_center_screen.dart';
+import 'terms_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -79,6 +84,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: _verificationBadge(),
               onTap: () => _push(const VerificationScreen()),
             ),
+            _tile(
+              icon: Icons.lock_outline,
+              label: 'Change Password',
+              subtitle: 'Send a password reset email',
+              onTap: () => _push(const ChangePasswordScreen()),
+            ),
+          ]),
+          _sectionLabel('Preferences'),
+          _sectionCard([
+            _tile(
+              icon: Icons.language_outlined,
+              label: 'Language',
+              subtitle: 'English',
+              onTap: () => _push(const LanguageScreen()),
+            ),
+            _tile(
+              icon: Icons.dark_mode_outlined,
+              label: 'Dark Mode',
+              subtitle: 'Coming soon',
+              onTap: null,
+            ),
           ]),
           _sectionLabel('Content'),
           _sectionCard([
@@ -124,6 +150,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ]),
           _sectionLabel('Support & About'),
           _sectionCard([
+            _tile(
+              icon: Icons.help_outline,
+              label: 'Help Center',
+              subtitle: 'Get help and answers',
+              onTap: () => _push(const HelpCenterScreen()),
+            ),
+            _tile(
+              icon: Icons.description_outlined,
+              label: 'Terms & Conditions',
+              subtitle: 'Read our terms',
+              onTap: () => _push(const TermsScreen()),
+            ),
+            _tile(
+              icon: Icons.privacy_tip_outlined,
+              label: 'Privacy Policy',
+              subtitle: 'Read our privacy policy',
+              onTap: () => _push(const PrivacyPolicyScreen()),
+            ),
             _tile(
               icon: Icons.info_outline,
               label: 'About UniVerse',

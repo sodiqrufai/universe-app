@@ -1,5 +1,5 @@
 import 'dart:convert';
-// import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/session_service.dart';
 import '../story_viewer_screen.dart';
+import '../notice_board_screen.dart';
 
 /// Horizontal story carousel shown above the Feed post list.
 /// "Your Story" is always first; other authors follow, ring color
@@ -90,6 +91,33 @@ class StoryCarouselState extends State<StoryCarousel> {
         : await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
     if (picked == null) return;
 
+    final captionController = TextEditingController();
+    final caption = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        title: const Text('Add a caption?'),
+        content: TextField(
+          controller: captionController,
+          maxLength: 120,
+          decoration: const InputDecoration(hintText: 'Optional'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, ''),
+            child: const Text('Skip'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, captionController.text.trim()),
+            child: const Text('Post Story'),
+          ),
+        ],
+      ),
+    );
+    if (caption == null) return; // dialog dismissed without a choice
+
     setState(() => _uploading = true);
     try {
       final token = await SessionService.getToken();
@@ -99,6 +127,7 @@ class StoryCarouselState extends State<StoryCarousel> {
       );
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['mediaType'] = choice;
+      if (caption.isNotEmpty) request.fields['caption'] = caption;
       request.files.add(await http.MultipartFile.fromPath('file', picked.path));
 
       final streamed = await request.send();
@@ -150,11 +179,12 @@ class StoryCarouselState extends State<StoryCarousel> {
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-        itemCount: _authors.length + 1,
+        itemCount: _authors.length + 2,
         itemBuilder: (context, i) {
           if (i == 0) return _buildYourStory();
-          final author = _authors[i - 1];
-          return _buildAuthorStory(author, i - 1);
+          if (i == 1) return _buildNoticeBoard();
+          final author = _authors[i - 2];
+          return _buildAuthorStory(author, i - 2);
         },
       ),
     );
@@ -207,6 +237,32 @@ class StoryCarouselState extends State<StoryCarousel> {
             ),
             const SizedBox(height: 4),
             const Text('Your Story', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoticeBoard() {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.md),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NoticeBoardScreen()),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: AppColors.lightPurple,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.campaign, color: AppColors.primary, size: 26),
+            ),
+            const SizedBox(height: 4),
+            const Text('Notices', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
       ),

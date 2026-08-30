@@ -3,11 +3,13 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
+import '../trending_screen.dart';
 import 'story_carousel.dart';
 
 /// Feed: the public campus feed, with announcements pinned above the
-/// post list. Replaces the old HomeTab dashboard — this is the landing
-/// tab now, so it leads with real content instead of a shortcuts grid.
+/// post list, a Trending pill row, and a story carousel (which itself
+/// hosts the Notice Board entry point). Replaces the old HomeTab
+/// dashboard — this is the landing tab now.
 class FeedTab extends StatefulWidget {
   const FeedTab({super.key});
 
@@ -18,9 +20,18 @@ class FeedTab extends StatefulWidget {
 class _FeedTabState extends State<FeedTab> {
   List<dynamic> _posts = [];
   List<dynamic> _announcements = [];
+  List<dynamic> _trending = [];
+  String? _activeTag;
   bool _loading = true;
   bool _hasError = false;
   final _storyKey = GlobalKey<StoryCarouselState>();
+
+  static const _tagColors = [
+    AppColors.primary,
+    AppColors.success,
+    AppColors.warning,
+    AppColors.info,
+  ];
 
   @override
   void initState() {
@@ -34,16 +45,22 @@ class _FeedTabState extends State<FeedTab> {
       _hasError = false;
     });
     try {
+      final feedPath = _activeTag != null
+          ? '/posts/feed?tag=${Uri.encodeQueryComponent(_activeTag!)}'
+          : '/posts/feed';
       final results = await Future.wait([
-        ApiService.get('/posts/feed'),
+        ApiService.get(feedPath),
         ApiService.get('/home'),
+        ApiService.get('/posts/trending'),
       ]);
       final postsData = results[0];
       final homeData = results[1];
+      final trendingData = results[2];
       if (postsData['success'] == true) {
         setState(() {
           _posts = postsData['posts'] ?? [];
           _announcements = homeData['announcements'] ?? [];
+          _trending = trendingData['success'] == true ? (trendingData['trending'] ?? []) : [];
           _loading = false;
         });
       } else {
@@ -60,34 +77,62 @@ class _FeedTabState extends State<FeedTab> {
     }
   }
 
-  Future<void> _toggleReaction(String postId, int index) async {
-    final wasReacted = _posts[index]['hasReacted'] == true;
+  void _selectTag(String? tag) {
+    setState(() => _activeTag = _activeTag == tag ? null : tag);
+    _fetchAll();
+  }
+
+  Future<void> _openTrendingScreen() async {
+    final tag = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const TrendingScreen()));
+    if (tag != null) _selectTag(tag);
+  }
+
+  Future<void> _toggleReaction(String postId, int index, String reactionType) async {
+    final counts = Map<String, int>.from(_posts[index]['reactionCounts'] ?? {'like': 0, 'love': 0});
+    final myReactions = List<String>.from(_posts[index]['myReactions'] ?? []);
+    final wasReacted = myReactions.contains(reactionType);
+
     setState(() {
-      _posts[index]['hasReacted'] = !wasReacted;
-      _posts[index]['reactionCount'] =
-          (_posts[index]['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
+      if (wasReacted) {
+        myReactions.remove(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 1) - 1;
+      } else {
+        myReactions.add(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 0) + 1;
+      }
+      _posts[index]['myReactions'] = myReactions;
+      _posts[index]['reactionCounts'] = counts;
     });
+
     try {
-      final data = await ApiService.post('/posts/$postId/react', {});
+      final data = await ApiService.post('/posts/$postId/react', {'reactionType': reactionType});
       if (data['success'] != true && mounted) {
-        setState(() {
-          _posts[index]['hasReacted'] = wasReacted;
-          _posts[index]['reactionCount'] =
-              (_posts[index]['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
-        });
+        _revertReaction(index, reactionType, wasReacted);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Could not react to this post')));
       }
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _posts[index]['hasReacted'] = wasReacted;
-          _posts[index]['reactionCount'] =
-              (_posts[index]['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
-        });
-      }
+      if (mounted) _revertReaction(index, reactionType, wasReacted);
     }
+  }
+
+  void _revertReaction(int index, String reactionType, bool wasReacted) {
+    setState(() {
+      final counts = Map<String, int>.from(_posts[index]['reactionCounts'] ?? {'like': 0, 'love': 0});
+      final myReactions = List<String>.from(_posts[index]['myReactions'] ?? []);
+      if (wasReacted) {
+        myReactions.add(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 0) + 1;
+      } else {
+        myReactions.remove(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 1) - 1;
+      }
+      _posts[index]['myReactions'] = myReactions;
+      _posts[index]['reactionCounts'] = counts;
+    });
   }
 
   Future<void> _createPost() async {
@@ -140,6 +185,10 @@ class _FeedTabState extends State<FeedTab> {
         children: [
           StoryCarousel(key: _storyKey),
           const SizedBox(height: AppSpacing.md),
+          if (_trending.isNotEmpty) ...[
+            _buildTrendingRow(),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -148,17 +197,122 @@ class _FeedTabState extends State<FeedTab> {
                   ..._announcements.map(_buildAnnouncementCard),
                   const SizedBox(height: 8),
                 ],
+                if (_activeTag != null) _buildActiveTagBanner(),
                 if (_posts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 80),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 80),
                     child: Center(
-                      child: Text('No posts yet — be the first to share something!'),
+                      child: Text(
+                        _activeTag != null
+                            ? 'No posts tagged "$_activeTag" yet'
+                            : 'No posts yet — be the first to share something!',
+                      ),
                     ),
                   )
                 else
                   ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendingRow() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Trending on Campus',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+              ),
+              GestureDetector(
+                onTap: _openTrendingScreen,
+                child: const Text(
+                  'See all',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _trending.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, i) {
+              final t = _trending[i];
+              final color = _tagColors[i % _tagColors.length];
+              final selected = _activeTag == t['label'];
+              return GestureDetector(
+                onTap: () => _selectTag(t['label']),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected ? color : color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.trending_up, size: 14, color: selected ? Colors.white : color),
+                      const SizedBox(width: 6),
+                      Text(
+                        t['label'],
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: selected ? Colors.white : color,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${t['count']}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: selected ? Colors.white70 : color.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveTagBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.lightPurple,
+        borderRadius: BorderRadius.circular(AppRadius.medium),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Showing posts tagged "$_activeTag"',
+              style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _selectTag(null),
+            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
           ),
         ],
       ),
@@ -205,6 +359,10 @@ class _FeedTabState extends State<FeedTab> {
     final isVerified = profile?['is_verified'] == true;
     final avatarUrl = profile?['avatar_url'];
     final isGlobal = post['visibility'] == 'global';
+    final counts = post['reactionCounts'] ?? {'like': 0, 'love': 0};
+    final myReactions = List<String>.from(post['myReactions'] ?? []);
+    final iLiked = myReactions.contains('like');
+    final iLoved = myReactions.contains('love');
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -265,6 +423,23 @@ class _FeedTabState extends State<FeedTab> {
               ),
               const SizedBox(height: 10),
               Text(post['content'] ?? '', style: const TextStyle(fontSize: 14)),
+              if (post['tags'] != null && (post['tags'] as List).isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  children: (post['tags'] as List)
+                      .map<Widget>(
+                        (t) => GestureDetector(
+                          onTap: () => _selectTag(t),
+                          child: Text(
+                            '#$t',
+                            style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
               if (post['image_url'] != null) ...[
                 const SizedBox(height: 10),
                 ClipRRect(
@@ -274,6 +449,11 @@ class _FeedTabState extends State<FeedTab> {
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: 180,
+                    errorBuilder: (_, _, _) => Container(
+                      height: 180,
+                      color: AppColors.lightPurple,
+                      child: const Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
+                    ),
                   ),
                 ),
               ],
@@ -281,17 +461,35 @@ class _FeedTabState extends State<FeedTab> {
               Row(
                 children: [
                   GestureDetector(
-                    onTap: () => _toggleReaction(post['id'], index),
+                    onTap: () => _toggleReaction(post['id'], index, 'like'),
                     child: Row(
                       children: [
                         Icon(
-                          post['hasReacted'] == true ? Icons.favorite : Icons.favorite_border,
-                          size: 18,
-                          color: post['hasReacted'] == true ? Colors.red : AppColors.textSecondary,
+                          iLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                          size: 17,
+                          color: iLiked ? AppColors.primary : AppColors.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${post['reactionCount'] ?? 0}',
+                          '${counts['like'] ?? 0}',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => _toggleReaction(post['id'], index, 'love'),
+                    child: Row(
+                      children: [
+                        Icon(
+                          iLoved ? Icons.favorite : Icons.favorite_border,
+                          size: 17,
+                          color: iLoved ? Colors.red : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${counts['love'] ?? 0}',
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],

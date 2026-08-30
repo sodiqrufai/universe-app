@@ -70,20 +70,35 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
         separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           final p = _posts[index];
+          final isRemoved = p['is_removed'] == true;
           return Card(
+            color: isRemoved ? AppColors.lightPurple.withValues(alpha: 0.4) : null,
             child: ListTile(
+              leading: isRemoved
+                  ? const Icon(Icons.block, color: AppColors.error)
+                  : null,
               title: Text(
                 p['content'],
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                style: isRemoved
+                    ? const TextStyle(color: AppColors.textMuted, decoration: TextDecoration.lineThrough)
+                    : null,
               ),
-              subtitle: Text('${p['reactionCount'] ?? 0} likes'),
-              onTap: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => PostDetailScreen(post: p)),
-                );
-                _fetch();
-              },
+              subtitle: isRemoved
+                  ? Text(
+                      'Removed by a moderator${p['removed_reason'] != null ? ': ${p['removed_reason']}' : ''}',
+                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                    )
+                  : Text('${p['reactionCounts']?['like'] ?? 0} likes, ${p['reactionCounts']?['love'] ?? 0} loves'),
+              onTap: isRemoved
+                  ? null
+                  : () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => PostDetailScreen(post: p)),
+                      );
+                      _fetch();
+                    },
             ),
           );
         },

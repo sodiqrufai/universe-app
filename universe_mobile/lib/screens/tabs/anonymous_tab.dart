@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/restricted_dialog.dart';
 import '../anonymous_post_detail_screen.dart';
 import '../anonymous_setup_screen.dart';
 
@@ -136,8 +137,28 @@ class _AnonymousTabState extends State<AnonymousTab> {
                       'content': controller.text.trim(),
                       'category': category,
                     });
-                    if (context.mounted) {
-                      Navigator.of(context).pop(data['success'] == true);
+                    if (data['success'] == true) {
+                      if (context.mounted) Navigator.of(context).pop(true);
+                    } else if (data['restricted'] == true) {
+                      if (context.mounted) Navigator.of(context).pop(false);
+                      if (mounted) {
+                        await showRestrictedDialog(
+                          this.context,
+                          (data['error'] ?? 'This action is restricted on your account.').toString(),
+                        );
+                      }
+                    } else {
+                      final rawError = (data['error'] ?? '').toString();
+                      final message = rawError.contains('ThrottlerException') ||
+                              rawError.toLowerCase().contains('too many requests')
+                          ? "You're posting a bit fast — wait a moment and try again."
+                          : (rawError.isNotEmpty ? rawError : 'Could not post — try again');
+                      if (mounted) {
+                        ScaffoldMessenger.of(
+                          this.context,
+                        ).showSnackBar(SnackBar(content: Text(message)));
+                      }
+                      if (context.mounted) Navigator.of(context).pop(false);
                     }
                   } catch (_) {
                     if (context.mounted) Navigator.of(context).pop(false);
@@ -153,11 +174,10 @@ class _AnonymousTabState extends State<AnonymousTab> {
 
     if (posted == true) {
       _fetchFeed();
-    } else if (posted == false && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not post — try again')));
     }
+    // Error messaging is now shown inline in the sheet's Post button
+    // handler (so it can distinguish rate-limiting from other failures) —
+    // no need for a second generic snackbar here.
   }
 
   @override

@@ -261,7 +261,7 @@ export class AnonymousController {
     @Headers('authorization') authHeader: string,
     @Param('id') id: string,
   ) {
-    await this.getUserFromToken(authHeader);
+    const user = await this.getUserFromToken(authHeader);
 
     const { data, error } =
       await this.supabase.client
@@ -281,10 +281,64 @@ export class AnonymousController {
       };
     }
 
+    const all = data ?? [];
+    const commentIds = all.map((c: any) => c.id);
+    let reactionCounts: Record<string, number> = {};
+    let myReactedIds = new Set<string>();
+
+    if (commentIds.length > 0) {
+      const { data: reactions } = await this.supabase.client
+        .from('anonymous_comment_reactions')
+        .select('comment_id, user_id')
+        .in('comment_id', commentIds);
+
+      reactions?.forEach((r) => {
+        reactionCounts[r.comment_id] = (reactionCounts[r.comment_id] ?? 0) + 1;
+        if (r.user_id === user.id) myReactedIds.add(r.comment_id);
+      });
+    }
+
+    const byId = new Map(
+      all.map((c: any) => [
+        c.id,
+        { ...c, replies: [] as any[], reactionCount: reactionCounts[c.id] ?? 0, hasReacted: myReactedIds.has(c.id) },
+      ]),
+    );
+    const topLevel: any[] = [];
+
+    for (const c of all as any[]) {
+      const node = byId.get(c.id);
+      if (c.parent_comment_id && byId.has(c.parent_comment_id)) {
+        byId.get(c.parent_comment_id).replies.push(node);
+      } else {
+        topLevel.push(node);
+      }
+    }
+
     return {
       success: true,
-      comments: data,
+      comments: topLevel,
     };
+  }
+
+  @Post('comments/:id/react')
+  async toggleCommentReaction(@Headers('authorization') authHeader: string, @Param('id') commentId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('anonymous_comment_reactions')
+      .select('id')
+      .eq('comment_id', commentId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await this.supabase.client.from('anonymous_comment_reactions').delete().eq('id', existing.id);
+      return { success: true, reacted: false };
+    } else {
+      await this.supabase.client.from('anonymous_comment_reactions').insert({ comment_id: commentId, user_id: user.id });
+      return { success: true, reacted: true };
+    }
   }
 
   // 10 anonymous comments per minute
@@ -293,7 +347,7 @@ export class AnonymousController {
   async addComment(
     @Headers('authorization') authHeader: string,
     @Param('id') id: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; parentCommentId?: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
     await this.supabase.assertNotRestricted(user.id);
@@ -326,6 +380,7 @@ export class AnonymousController {
           anonymous_post_id: id,
           anonymous_profile_id: anonProfile.id,
           content: body.content.trim(),
+          parent_comment_id: body.parentCommentId ?? null,
         })
         .select(
           '*, anonymous_profiles(anonymous_username)',

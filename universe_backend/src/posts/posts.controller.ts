@@ -123,6 +123,7 @@ export class PostsController {
   async getFeed(
     @Headers('authorization') authHeader: string,
     @Query('tag') tag?: string,
+    @Query('filter') filter?: string, // 'all' (default) | 'following' | 'university'
     @Query('page') page = '1',
     @Query('pageSize') pageSize = '20',
   ) {
@@ -140,6 +141,22 @@ export class PostsController {
     const from = (pageNum - 1) * size;
     const to = from + size - 1;
 
+    // 'following' needs the set of authors up front to filter by author_id,
+    // which range-based pagination interacts with -- resolve it before the
+    // main query rather than filtering the page's results after the fact,
+    // or pagination counts would be wrong for this filter specifically.
+    let followingIds: string[] | null = null;
+    if (filter === 'following') {
+      const { data: follows } = await this.supabase.client
+        .from('follows')
+        .select('followed_id')
+        .eq('follower_id', user.id);
+      followingIds = (follows ?? []).map((f) => f.followed_id);
+      if (followingIds.length === 0) {
+        return { success: true, posts: [], total: 0, page: pageNum, pageSize: size };
+      }
+    }
+
     let query = this.supabase.client
       .from('posts')
       .select('*, profiles(full_name, username, avatar_url, is_verified)', { count: 'exact' })
@@ -148,7 +165,18 @@ export class PostsController {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (universityId) {
+    if (filter === 'following' && followingIds) {
+      query = query.in('author_id', followingIds);
+    } else if (filter === 'university') {
+      if (universityId) {
+        query = query.eq('visibility', 'university').eq('university_id', universityId);
+      } else {
+        // No university on this profile -- nothing can match a
+        // university-scoped filter, so return empty rather than silently
+        // falling back to "all".
+        return { success: true, posts: [], total: 0, page: pageNum, pageSize: size };
+      }
+    } else if (universityId) {
       query = query.or(`visibility.eq.global,and(visibility.eq.university,university_id.eq.${universityId})`);
     } else {
       query = query.eq('visibility', 'global');
@@ -395,7 +423,7 @@ export class PostsController {
 
   @Get(':id/comments')
   async getComments(@Headers('authorization') authHeader: string, @Param('id') id: string) {
-    await this.getUserFromToken(authHeader);
+    const user = await this.getUserFromToken(authHeader);
     const { data, error } = await this.supabase.client
       .from('comments')
       .select('*, profiles(full_name, username, avatar_url)')
@@ -403,13 +431,34 @@ export class PostsController {
       .order('created_at', { ascending: true });
     if (error) return { success: false, error: error.message };
 
+    const all = data ?? [];
+    const commentIds = all.map((c: any) => c.id);
+    let reactionCounts: Record<string, number> = {};
+    let myReactedIds = new Set<string>();
+
+    if (commentIds.length > 0) {
+      const { data: reactions } = await this.supabase.client
+        .from('comment_reactions')
+        .select('comment_id, user_id')
+        .in('comment_id', commentIds);
+
+      reactions?.forEach((r) => {
+        reactionCounts[r.comment_id] = (reactionCounts[r.comment_id] ?? 0) + 1;
+        if (r.user_id === user.id) myReactedIds.add(r.comment_id);
+      });
+    }
+
     // Build a two-level tree: top-level comments with their direct replies
     // nested under `replies`. Deeper nesting isn't modeled -- a reply-to-a-reply
     // is flattened onto the original top-level comment's replies list, which
     // matches how most comment UIs (including the one already in the mockup)
     // render threads in practice.
-    const all = data ?? [];
-    const byId = new Map(all.map((c: any) => [c.id, { ...c, replies: [] as any[] }]));
+    const byId = new Map(
+      all.map((c: any) => [
+        c.id,
+        { ...c, replies: [] as any[], reactionCount: reactionCounts[c.id] ?? 0, hasReacted: myReactedIds.has(c.id) },
+      ]),
+    );
     const topLevel: any[] = [];
 
     for (const c of all as any[]) {
@@ -422,6 +471,26 @@ export class PostsController {
     }
 
     return { success: true, comments: topLevel };
+  }
+
+  @Post('comments/:id/react')
+  async toggleCommentReaction(@Headers('authorization') authHeader: string, @Param('id') commentId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('comment_reactions')
+      .select('id')
+      .eq('comment_id', commentId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await this.supabase.client.from('comment_reactions').delete().eq('id', existing.id);
+      return { success: true, reacted: false };
+    } else {
+      await this.supabase.client.from('comment_reactions').insert({ comment_id: commentId, user_id: user.id });
+      return { success: true, reacted: true };
+    }
   }
 
   @Post(':id/comments')

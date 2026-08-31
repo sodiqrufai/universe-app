@@ -34,11 +34,21 @@ export class HomeController {
       return { success: false, error: error.message };
     }
 
+    // Deliberately not joining announcements.sent_by -> profiles here. Per the
+    // team decision on notice identity, students see a fixed "UniVerse
+    // Official" attribution regardless of which individual admin sent it --
+    // sent_by still exists as a real column for internal accountability
+    // (paired with admin_audit_log), it's just never surfaced to end users.
+    const brandedAnnouncements = (announcements ?? []).map((a: any) => ({
+      ...a,
+      senderLabel: 'UniVerse Official',
+    }));
+
     return {
       success: true,
       universityName: (profile?.universities as any)?.name ?? null,
       fullName: profile?.full_name ?? null,
-      announcements: announcements ?? [],
+      announcements: brandedAnnouncements,
     };
   }
 }

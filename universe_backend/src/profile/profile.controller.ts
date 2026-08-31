@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -114,6 +114,81 @@ export class ProfileController {
     if (error) {
       return { success: false, error: error.message };
     }
+    return { success: true };
+  }
+
+  @Patch('complete-setup')
+  async completeSetup(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { username: string; avatarUrl?: string; bio?: string; level: string },
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+
+    if (!body.username?.trim()) {
+      return { success: false, error: 'Username is required' };
+    }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(body.username.trim())) {
+      return { success: false, error: 'Username must be 3-20 characters, letters/numbers/underscores only' };
+    }
+    if (!body.level || !['100L', '200L', '300L', '400L', '500L', 'Postgraduate'].includes(body.level)) {
+      return { success: false, error: 'A valid level is required' };
+    }
+
+    // Single batched write so a student abandoning the review screen midway
+    // never leaves a half-saved profile (partial username with no level set,
+    // etc.) -- everything commits together or nothing does.
+    const updates: Record<string, any> = {
+      username: body.username.trim(),
+      level: body.level,
+      updated_at: new Date().toISOString(),
+    };
+    if (body.avatarUrl !== undefined) updates.avatar_url = body.avatarUrl;
+    if (body.bio !== undefined) updates.bio = body.bio.trim();
+
+    const { error } = await this.supabase.client
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id);
+
+    if (error) {
+      if (error.code === '23505') {
+        return { success: false, error: 'That username is already taken' };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  @Post(':id/follow')
+  async followUser(@Headers('authorization') authHeader: string, @Param('id') targetId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    if (targetId === user.id) {
+      return { success: false, error: 'Cannot follow yourself' };
+    }
+
+    const { error } = await this.supabase.client
+      .from('follows')
+      .insert({ follower_id: user.id, followed_id: targetId });
+
+    if (error) {
+      if (error.code === '23505') return { success: true }; // already following, treat as success
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  @Delete(':id/follow')
+  async unfollowUser(@Headers('authorization') authHeader: string, @Param('id') targetId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { error } = await this.supabase.client
+      .from('follows')
+      .delete()
+      .eq('follower_id', user.id)
+      .eq('followed_id', targetId);
+
+    if (error) return { success: false, error: error.message };
     return { success: true };
   }
 

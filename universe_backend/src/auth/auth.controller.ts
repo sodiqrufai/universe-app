@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -17,8 +17,27 @@ export class AuthController {
     );
   }
 
+  @Get('check-username')
+  async checkUsername(@Query('u') username?: string) {
+    const value = username?.trim();
+    if (!value || value.length < 3 || value.length > 20) {
+      return { available: false, error: 'Username must be 3-20 characters' };
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+      return { available: false, error: 'Only letters, numbers, and underscores allowed' };
+    }
+
+    const { data } = await this.supabase.client
+      .from('profiles')
+      .select('id')
+      .eq('username_lower', value.toLowerCase())
+      .maybeSingle();
+
+    return { available: !data };
+  }
+
   @Post('register')
-  async register(@Body() body: { email: string; password: string }) {
+  async register(@Body() body: { email: string; password: string; fullName?: string }) {
     const { data, error } = await this.getAuthClient().auth.signUp({
       email: body.email,
       password: body.password,
@@ -34,6 +53,7 @@ export class AuthController {
 
     await this.supabase.client.from('profiles').insert({
       id: data.user!.id,
+      full_name: body.fullName?.trim() || null,
     });
 
     return {

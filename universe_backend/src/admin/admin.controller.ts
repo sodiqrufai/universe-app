@@ -322,6 +322,7 @@ export class AdminController {
         body: body.body.trim(),
         university_id: body.isGlobal ? null : body.universityId ?? null,
         is_global: !!body.isGlobal,
+        sent_by: admin.id,
       })
       .select()
       .single();

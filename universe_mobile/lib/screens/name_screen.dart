@@ -2,41 +2,38 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/sign_up_data.dart';
-import 'name_screen.dart';
-import 'login_screen.dart';
+import 'username_screen.dart';
 
-/// Step 1 of 12: Email. Purely local — nothing hits the backend until
-/// step 5, since /auth/register needs email + password together.
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+/// Step 2 of 12: Name. Still purely local state.
+class NameScreen extends StatefulWidget {
+  final SignUpData data;
+  const NameScreen({super.key, required this.data});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<NameScreen> createState() => _NameScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
+class _NameScreenState extends State<NameScreen> {
+  late final _nameController = TextEditingController(text: widget.data.fullName);
   String? _error;
 
-  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   void _continue() {
-    final email = _emailController.text.trim();
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email address');
+    final name = _nameController.text.trim();
+    if (name.isEmpty || !name.contains(' ')) {
+      setState(() => _error = 'Enter your full name');
       return;
     }
     setState(() => _error = null);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => NameScreen(data: SignUpData(email: email)),
+        builder: (_) => UsernameScreen(data: widget.data.copyWith(fullName: name)),
       ),
     );
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -49,26 +46,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 1, totalSteps: 12),
+            const StepProgressDots(currentStep: 2, totalSteps: 12),
             const SizedBox(height: 24),
             const Text(
-              'What\'s your email?',
+              'What\'s your name?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
             const Text(
-              'We\'ll use this to verify you\'re a student and for account recovery.',
+              'This is how other students will see you.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
+              controller: _nameController,
               autofocus: true,
+              textCapitalization: TextCapitalization.words,
               onSubmitted: (_) => _continue(),
               decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
+                labelText: 'Full name',
+                prefixIcon: Icon(Icons.person_outline),
               ),
             ),
             const SizedBox(height: 16),
@@ -78,15 +75,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Text(_error!, style: const TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(onPressed: _continue, child: const Text('Continue')),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-              child: const Text('Already have an account? Log In'),
-            ),
           ],
         ),
       ),

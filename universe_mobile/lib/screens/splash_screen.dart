@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
+import 'onboarding_screen.dart';
 import 'university_selector_screen.dart';
 import 'main_shell.dart';
 
@@ -27,9 +28,13 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (token == null) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+      final seenOnboarding = await hasSeenOnboarding();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => seenOnboarding ? const LoginScreen() : const OnboardingScreen(),
+        ),
+      );
       return;
     }
 

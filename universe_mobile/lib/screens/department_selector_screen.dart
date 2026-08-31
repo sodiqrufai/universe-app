@@ -5,8 +5,12 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
-import 'main_shell.dart';
+import '../widgets/step_progress_dots.dart';
+import 'level_selector_screen.dart';
 
+/// Step 10 of 12: Department. Level selection used to be a second phase
+/// of this same screen — split out into its own screen (level_selector_
+/// screen.dart) so each step in the sign-up flow gets its own dot.
 class DepartmentSelectorScreen extends StatefulWidget {
   final String facultyId;
   const DepartmentSelectorScreen({super.key, required this.facultyId});
@@ -20,9 +24,6 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   List<dynamic> _departments = [];
   bool _loading = true;
   bool _hasError = false;
-  String? _selectedDepartmentId;
-
-  final List<String> _levels = ['100L', '200L', '300L', '400L', '500L'];
 
   @override
   void initState() {
@@ -64,8 +65,10 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   Future<void> _selectDepartment(String departmentId) async {
     try {
       final data = await ApiService.patch('/profile/update', {'departmentId': departmentId});
-      if (data['success'] == true) {
-        setState(() => _selectedDepartmentId = departmentId);
+      if (data['success'] == true && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const LevelSelectorScreen()),
+        );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['error'] ?? 'Failed to save department')),
@@ -80,46 +83,27 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     }
   }
 
-  Future<void> _selectLevel(String level) async {
-    try {
-      final data = await ApiService.patch('/profile/update', {'level': level});
-      if (data['success'] == true && mounted) {
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['error'] ?? 'Failed to save your level')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not save your level')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selectedDepartmentId == null ? 'Select Your Department' : 'Select Your Level',
-        ),
+      appBar: AppBar(title: const Text('Select Your Department')),
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: StepProgressDots(currentStep: 10, totalSteps: 12),
+          ),
+          Expanded(child: _buildBody()),
+        ],
       ),
-      body: _loading
-          ? const LoadingView()
-          : _hasError
-          ? ErrorView(message: 'Could not load departments', onRetry: _fetchDepartments)
-          : _selectedDepartmentId == null
-          ? _buildDepartmentList()
-          : _buildLevelList(),
     );
   }
 
-  Widget _buildDepartmentList() {
+  Widget _buildBody() {
+    if (_loading) return const LoadingView();
+    if (_hasError) {
+      return ErrorView(message: 'Could not load departments', onRetry: _fetchDepartments);
+    }
     if (_departments.isEmpty) {
       return const EmptyView(
         icon: Icons.corporate_fare_outlined,
@@ -129,7 +113,7 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _departments.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final d = _departments[index];
         return Card(
@@ -137,25 +121,6 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
             title: Text(d['name']),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _selectDepartment(d['id']),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLevelList() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      itemCount: _levels.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final level = _levels[index];
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.school_outlined, color: AppColors.primary),
-            title: Text(level),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _selectLevel(level),
           ),
         );
       },

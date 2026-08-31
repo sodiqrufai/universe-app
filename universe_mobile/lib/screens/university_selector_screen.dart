@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/step_progress_dots.dart';
 import 'faculty_selector_screen.dart';
 
 class University {
@@ -118,6 +119,8 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const StepProgressDots(currentStep: 8, totalSteps: 12),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               onChanged: _search,
               decoration: const InputDecoration(
@@ -143,7 +146,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
     }
     return ListView.separated(
       itemCount: _filtered.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final u = _filtered[index];
         return Card(

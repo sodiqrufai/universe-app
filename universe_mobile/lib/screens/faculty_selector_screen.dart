@@ -5,6 +5,7 @@ import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/step_progress_dots.dart';
 import 'department_selector_screen.dart';
 
 class FacultySelectorScreen extends StatefulWidget {
@@ -81,7 +82,15 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Select Your Faculty')),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+            child: StepProgressDots(currentStep: 9, totalSteps: 12),
+          ),
+          Expanded(child: _buildBody()),
+        ],
+      ),
     );
   }
 
@@ -99,7 +108,7 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _faculties.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final f = _faculties[index];
         return Card(

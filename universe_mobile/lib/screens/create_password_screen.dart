@@ -2,41 +2,40 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/sign_up_data.dart';
-import 'name_screen.dart';
-import 'login_screen.dart';
+import 'confirm_password_screen.dart';
 
-/// Step 1 of 12: Email. Purely local — nothing hits the backend until
-/// step 5, since /auth/register needs email + password together.
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+/// Step 4 of 12: Create Password. Still local — nothing hits the
+/// backend until Confirm Password validates the match.
+class CreatePasswordScreen extends StatefulWidget {
+  final SignUpData data;
+  const CreatePasswordScreen({super.key, required this.data});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<CreatePasswordScreen> createState() => _CreatePasswordScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
+class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
+  final _passwordController = TextEditingController();
+  bool _obscure = true;
   String? _error;
 
-  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   void _continue() {
-    final email = _emailController.text.trim();
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email address');
+    final password = _passwordController.text;
+    if (password.length < 6) {
+      setState(() => _error = 'Password must be at least 6 characters');
       return;
     }
     setState(() => _error = null);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => NameScreen(data: SignUpData(email: email)),
+        builder: (_) => ConfirmPasswordScreen(data: widget.data.copyWith(password: password)),
       ),
     );
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -49,26 +48,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 1, totalSteps: 12),
+            const StepProgressDots(currentStep: 4, totalSteps: 12),
             const SizedBox(height: 24),
             const Text(
-              'What\'s your email?',
+              'Create a password',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
             const Text(
-              'We\'ll use this to verify you\'re a student and for account recovery.',
+              'At least 6 characters.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
+              controller: _passwordController,
+              obscureText: _obscure,
               autofocus: true,
               onSubmitted: (_) => _continue(),
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                  onPressed: () => setState(() => _obscure = !_obscure),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -78,15 +81,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Text(_error!, style: const TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(onPressed: _continue, child: const Text('Continue')),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
-              },
-              child: const Text('Already have an account? Log In'),
-            ),
           ],
         ),
       ),

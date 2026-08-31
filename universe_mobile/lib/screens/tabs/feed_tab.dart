@@ -135,6 +135,35 @@ class _FeedTabState extends State<FeedTab> {
     });
   }
 
+  Future<void> _reshare(String postId) async {
+    final data = await ApiService.post('/posts/$postId/reshare', {});
+    if (!mounted) return;
+    if (data['success'] == true) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reshared to your feed')));
+      _fetchAll();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['error'] ?? 'Could not reshare this post')),
+      );
+    }
+  }
+
+  Future<void> _toggleSave(String postId, int index) async {
+    final wasSaved = _posts[index]['isSaved'] == true;
+    setState(() => _posts[index]['isSaved'] = !wasSaved);
+    final data = await ApiService.post('/posts/$postId/save', {});
+    if (data['success'] == true) {
+      if (mounted) setState(() => _posts[index]['isSaved'] = data['saved'] == true);
+    } else if (mounted) {
+      setState(() => _posts[index]['isSaved'] = wasSaved);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not update saved posts')));
+    }
+  }
+
   Future<void> _createPost() async {
     final created = await Navigator.of(
       context,
@@ -363,6 +392,7 @@ class _FeedTabState extends State<FeedTab> {
     final myReactions = List<String>.from(post['myReactions'] ?? []);
     final iLiked = myReactions.contains('like');
     final iLoved = myReactions.contains('love');
+    final isSaved = post['isSaved'] == true;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -495,12 +525,26 @@ class _FeedTabState extends State<FeedTab> {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => _reshare(post['id']),
+                    child: const Icon(Icons.repeat, size: 18, color: AppColors.textSecondary),
+                  ),
                   const SizedBox(width: 20),
                   const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
                   Text(
                     '${post['commentCount'] ?? 0}',
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _toggleSave(post['id'], index),
+                    child: Icon(
+                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                      size: 18,
+                      color: isSaved ? AppColors.primary : AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

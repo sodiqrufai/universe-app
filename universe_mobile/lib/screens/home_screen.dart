@@ -1,9 +1,7 @@
-import '../../config/api_config.dart';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'verification_screen.dart';
@@ -26,13 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchStatus() async {
-    final token = await SessionService.getToken();
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/verification/status'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.get('/verification/status');
       setState(() {
         _verification = data['verification'];
         _loading = false;

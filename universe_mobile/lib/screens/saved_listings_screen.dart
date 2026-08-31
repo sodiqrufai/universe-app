@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
 import 'listing_detail_screen.dart';
+import 'post_detail_screen.dart';
 
 class SavedListingsScreen extends StatefulWidget {
   const SavedListingsScreen({super.key});
@@ -13,6 +14,7 @@ class SavedListingsScreen extends StatefulWidget {
 
 class _SavedListingsScreenState extends State<SavedListingsScreen> {
   List<dynamic> _listings = [];
+  List<dynamic> _posts = [];
   bool _loading = true;
   bool _hasError = false;
 
@@ -28,9 +30,13 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
       _hasError = false;
     });
     try {
-      final data = await ApiService.get('/marketplace/saved');
+      final results = await Future.wait([
+        ApiService.get('/marketplace/saved'),
+        ApiService.get('/posts/saved'),
+      ]);
       setState(() {
-        _listings = data['listings'] ?? [];
+        _listings = results[0]['listings'] ?? [];
+        _posts = results[1]['posts'] ?? [];
         _loading = false;
       });
     } catch (e) {
@@ -43,17 +49,27 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Saved Items')),
-      body: _buildBody(),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Saved'),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Items'), Tab(text: 'Posts')],
+          ),
+        ),
+        body: _loading
+            ? const LoadingView()
+            : _hasError
+                ? ErrorView(message: 'Could not load your saved content', onRetry: _fetchSaved)
+                : TabBarView(
+                    children: [_buildListings(), _buildPosts()],
+                  ),
+      ),
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) return const LoadingView();
-    if (_hasError) {
-      return ErrorView(message: 'Could not load your saved items', onRetry: _fetchSaved);
-    }
+  Widget _buildListings() {
     if (_listings.isEmpty) {
       return const EmptyView(
         icon: Icons.bookmark_border,
@@ -96,6 +112,49 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
                   MaterialPageRoute(
                     builder: (_) => ListingDetailScreen(listingId: l['id']),
                   ),
+                );
+                _fetchSaved();
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPosts() {
+    if (_posts.isEmpty) {
+      return const EmptyView(
+        icon: Icons.bookmark_border,
+        title: 'No saved posts yet',
+        subtitle: 'Posts you save will appear here.',
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchSaved,
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: _posts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final p = _posts[index];
+          final profile = p['profiles'];
+          return Card(
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.lightPurple,
+                child: Icon(Icons.person, color: AppColors.primary),
+              ),
+              title: Text(profile?['full_name'] ?? 'Student'),
+              subtitle: Text(
+                p['content'] ?? '',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => PostDetailScreen(post: p)),
                 );
                 _fetchSaved();
               },

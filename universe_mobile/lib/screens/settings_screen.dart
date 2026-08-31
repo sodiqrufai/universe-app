@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _tile(
               icon: Icons.bookmark_border,
-              label: 'Saved Items',
+              label: 'Saved',
               subtitle: 'View and manage your saved posts and items',
               onTap: () => _push(const SavedListingsScreen()),
             ),

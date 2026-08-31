@@ -154,6 +154,59 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     }
   }
 
+  Future<void> _showMembers(String groupId, String groupName) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (context, scrollController) => FutureBuilder(
+          future: ApiService.get('/education/groups/$groupId/members'),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            }
+            final data = snapshot.data as Map<String, dynamic>;
+            final members = data['members'] ?? [];
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Text(groupName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                ),
+                Expanded(
+                  child: members.isEmpty
+                      ? const Center(child: Text('No members yet'))
+                      : ListView.builder(
+                          controller: scrollController,
+                          itemCount: members.length,
+                          itemBuilder: (context, index) {
+                            final m = members[index]['profiles'];
+                            final avatarUrl = m?['avatar_url'];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: AppColors.lightPurple,
+                                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                                child: avatarUrl == null
+                                    ? const Icon(Icons.person, color: AppColors.primary)
+                                    : null,
+                              ),
+                              title: Text(m?['full_name'] ?? 'Student'),
+                              subtitle: m?['username'] != null ? Text('@${m['username']}') : null,
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _createGroup() async {
     final nameController = TextEditingController();
     final descController = TextEditingController();
@@ -490,9 +543,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         return Card(
           child: ListTile(
             title: Text(g['name'] ?? ''),
-            subtitle: Text(
-              '${g['memberCount'] ?? 0} members',
-              style: const TextStyle(color: AppColors.textSecondary),
+            subtitle: GestureDetector(
+              onTap: () => _showMembers(g['id'], g['name'] ?? 'Group'),
+              child: Text(
+                '${g['memberCount'] ?? 0} members · View members',
+                style: const TextStyle(color: AppColors.primary),
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,

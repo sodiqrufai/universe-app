@@ -448,52 +448,92 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       itemBuilder: (context, index) {
         final m = _messages[index];
         final isMine = m['sender_id'] == _myUserId;
+        final counts = Map<String, int>.from(m['reactionCounts'] ?? {'like': 0, 'love': 0});
+        final myReactions = List<String>.from(m['myReactions'] ?? []);
         return Align(
           alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            padding: const EdgeInsets.all(10),
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-            decoration: BoxDecoration(
-              color: isMine ? AppColors.primary : AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: isMine ? null : Border.all(color: AppColors.border),
-            ),
+          child: GestureDetector(
+            onLongPress: () => _showReactionPicker(m['id'], index),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                if (m['attachment_url'] != null)
-                  GestureDetector(
-                    onTap: () => _openImageViewer(m['attachment_url']),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(AppRadius.medium),
-                      child: Image.network(
-                        m['attachment_url'],
-                        width: 180,
-                        errorBuilder: (_, _, _) => const Icon(
-                          Icons.broken_image_outlined,
-                          color: AppColors.textMuted,
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.all(10),
+                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                  decoration: BoxDecoration(
+                    color: isMine ? AppColors.primary : AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: isMine ? null : Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (m['attachment_url'] != null)
+                        GestureDetector(
+                          onTap: () => _openImageViewer(m['attachment_url']),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.medium),
+                            child: Image.network(
+                              m['attachment_url'],
+                              width: 180,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.broken_image_outlined,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      if (m['content'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            m['content'],
+                            style: TextStyle(color: isMine ? Colors.white : AppColors.textPrimary),
+                          ),
+                        ),
+                      if (m['created_at'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            DateFormat('h:mm a').format(DateTime.parse(m['created_at']).toLocal()),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isMine ? Colors.white70 : AppColors.textMuted,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                if (m['content'] != null)
+                ),
+                if ((counts['like'] ?? 0) > 0 || (counts['love'] ?? 0) > 0)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      m['content'],
-                      style: TextStyle(color: isMine ? Colors.white : AppColors.textPrimary),
-                    ),
-                  ),
-                if (m['created_at'] != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      DateFormat('h:mm a').format(DateTime.parse(m['created_at']).toLocal()),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isMine ? Colors.white70 : AppColors.textMuted,
-                      ),
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if ((counts['like'] ?? 0) > 0) ...[
+                          Icon(
+                            Icons.thumb_up,
+                            size: 12,
+                            color: myReactions.contains('like')
+                                ? AppColors.primary
+                                : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 2),
+                          Text('${counts['like']}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                          const SizedBox(width: 6),
+                        ],
+                        if ((counts['love'] ?? 0) > 0) ...[
+                          Icon(
+                            Icons.favorite,
+                            size: 12,
+                            color: myReactions.contains('love') ? Colors.red : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 2),
+                          Text('${counts['love']}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                        ],
+                      ],
                     ),
                   ),
               ],
@@ -502,5 +542,68 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       },
     );
+  }
+
+  void _showReactionPicker(String messageId, int index) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              iconSize: 32,
+              icon: const Icon(Icons.thumb_up, color: AppColors.primary),
+              onPressed: () {
+                Navigator.pop(context);
+                _reactToMessage(messageId, index, 'like');
+              },
+            ),
+            const SizedBox(width: 24),
+            IconButton(
+              iconSize: 32,
+              icon: const Icon(Icons.favorite, color: Colors.red),
+              onPressed: () {
+                Navigator.pop(context);
+                _reactToMessage(messageId, index, 'love');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _reactToMessage(String messageId, int index, String reactionType) async {
+    final counts = Map<String, int>.from(_messages[index]['reactionCounts'] ?? {'like': 0, 'love': 0});
+    final myReactions = List<String>.from(_messages[index]['myReactions'] ?? []);
+    final wasReacted = myReactions.contains(reactionType);
+    setState(() {
+      if (wasReacted) {
+        myReactions.remove(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 1) - 1;
+      } else {
+        myReactions.add(reactionType);
+        counts[reactionType] = (counts[reactionType] ?? 0) + 1;
+      }
+      _messages[index]['myReactions'] = myReactions;
+      _messages[index]['reactionCounts'] = counts;
+    });
+    final data = await ApiService.post('/chat/messages/$messageId/react', {'reactionType': reactionType});
+    if (data['success'] != true && mounted) {
+      setState(() {
+        final revertCounts = Map<String, int>.from(_messages[index]['reactionCounts'] ?? {});
+        final revertReactions = List<String>.from(_messages[index]['myReactions'] ?? []);
+        if (wasReacted) {
+          revertReactions.add(reactionType);
+          revertCounts[reactionType] = (revertCounts[reactionType] ?? 0) + 1;
+        } else {
+          revertReactions.remove(reactionType);
+          revertCounts[reactionType] = (revertCounts[reactionType] ?? 1) - 1;
+        }
+        _messages[index]['myReactions'] = revertReactions;
+        _messages[index]['reactionCounts'] = revertCounts;
+      });
+    }
   }
 }

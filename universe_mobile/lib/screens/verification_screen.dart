@@ -1,4 +1,4 @@
-import '../../config/api_config.dart';
+import '../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
@@ -50,11 +51,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     });
 
     final token = await SessionService.getToken();
-    final profileResp = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/profile/me'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    final profileData = jsonDecode(profileResp.body);
+    final profileData = await ApiService.get('/profile/me');
     final universityId = profileData['profile']?['university_id'];
 
     if (universityId == null) {

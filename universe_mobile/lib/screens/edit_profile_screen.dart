@@ -1,4 +1,4 @@
-import '../../config/api_config.dart';
+import '../config/api_config.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../services/api_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -34,13 +35,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _fetchProfile() async {
-    final token = await SessionService.getToken();
     try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/profile/me'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.get('/profile/me');
       if (data['success'] == true) {
         final profile = data['profile'];
         setState(() {
@@ -127,21 +123,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _saving = true;
       _error = null;
     });
-    final token = await SessionService.getToken();
     try {
-      final response = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/profile/update'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'fullName': _fullNameController.text.trim(),
-          'username': _usernameController.text.trim(),
-          'bio': _bioController.text.trim(),
-        }),
-      );
-      final data = jsonDecode(response.body);
+      final data = await ApiService.patch('/profile/update', {
+        'fullName': _fullNameController.text.trim(),
+        'username': _usernameController.text.trim(),
+        'bio': _bioController.text.trim(),
+      });
       if (data['success'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(

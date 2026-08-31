@@ -53,7 +53,6 @@ export class PostsController {
     }
 
     const visibility = body.visibility === 'global' ? 'global' : 'university';
-    // tags sent as a comma-separated string from the client, e.g. "Exam Tips,Hostel Life"
     const tags = body.tags
       ? body.tags.split(',').map((t) => t.trim()).filter(Boolean)
       : null;
@@ -73,6 +72,48 @@ export class PostsController {
 
     if (error) {
       console.error('Create post error:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, post: data };
+  }
+
+  @Post(':id/reshare')
+  async resharePost(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
+
+    const { data: original, error: fetchError } = await this.supabase.client
+      .from('posts')
+      .select('id, reposted_post_id, is_removed, university_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !original) {
+      return { success: false, error: 'Original post not found' };
+    }
+    if (original.is_removed) {
+      return { success: false, error: 'This post is no longer available' };
+    }
+    if (original.reposted_post_id) {
+      // One-level cap: you can reshare an original post, but not a reshare of
+      // a reshare. Always point at the true original, never chain them.
+      return { success: false, error: 'Cannot reshare a repost -- share the original post instead' };
+    }
+
+    const { data, error } = await this.supabase.client
+      .from('posts')
+      .insert({
+        author_id: user.id,
+        content: '',
+        visibility: 'university',
+        university_id: original.university_id,
+        reposted_post_id: original.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Reshare error:', error);
       return { success: false, error: error.message };
     }
     return { success: true, post: data };
@@ -131,10 +172,27 @@ export class PostsController {
     );
     const filtered = (data ?? []).filter((p) => !blockedAuthorIds.has(p.author_id));
 
+    // Resolve reposted original content in one batch query rather than N+1.
+    const repostSourceIds = filtered
+      .map((p: any) => p.reposted_post_id)
+      .filter((id: string | null) => !!id);
+
+    let originalsById: Record<string, any> = {};
+    if (repostSourceIds.length > 0) {
+      const { data: originals } = await this.supabase.client
+        .from('posts')
+        .select('id, content, image_url, is_removed, profiles(full_name, username, avatar_url, is_verified)')
+        .in('id', repostSourceIds);
+      (originals ?? []).forEach((o: any) => {
+        originalsById[o.id] = o;
+      });
+    }
+
     const postIds = filtered.map((p) => p.id);
     let reactionsByPost: Record<string, { like: number; love: number }> = {};
     let userReactions: Record<string, Set<string>> = {};
     let commentCounts: Record<string, number> = {};
+    let savedSet = new Set<string>();
 
     if (postIds.length > 0) {
       const { data: reactions } = await this.supabase.client
@@ -158,14 +216,32 @@ export class PostsController {
       comments?.forEach((c) => {
         commentCounts[c.post_id] = (commentCounts[c.post_id] ?? 0) + 1;
       });
+
+      const { data: saved } = await this.supabase.client
+        .from('saved_posts')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .in('post_id', postIds);
+      savedSet = new Set((saved ?? []).map((s) => s.post_id));
     }
 
-    const enriched = filtered.map((p) => ({
-      ...p,
-      reactionCounts: reactionsByPost[p.id] ?? { like: 0, love: 0 },
-      myReactions: Array.from(userReactions[p.id] ?? []),
-      commentCount: commentCounts[p.id] ?? 0,
-    }));
+    const enriched = filtered.map((p: any) => {
+      let repost: any = undefined;
+      if (p.reposted_post_id) {
+        const original = originalsById[p.reposted_post_id];
+        repost = original && !original.is_removed
+          ? original
+          : { deleted: true };
+      }
+      return {
+        ...p,
+        repost,
+        reactionCounts: reactionsByPost[p.id] ?? { like: 0, love: 0 },
+        myReactions: Array.from(userReactions[p.id] ?? []),
+        commentCount: commentCounts[p.id] ?? 0,
+        isSaved: savedSet.has(p.id),
+      };
+    });
 
     return { success: true, posts: enriched, total: count ?? 0, page: pageNum, pageSize: size };
   }
@@ -241,6 +317,40 @@ export class PostsController {
     return { success: true, trending: top };
   }
 
+  @Get('saved')
+  async getSavedPosts(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data, error } = await this.supabase.client
+      .from('saved_posts')
+      .select('created_at, posts(*, profiles(full_name, username, avatar_url, is_verified))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, posts: (data ?? []).map((s: any) => s.posts).filter(Boolean) };
+  }
+
+  @Post(':id/save')
+  async toggleSavePost(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('saved_posts')
+      .select('id')
+      .eq('post_id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await this.supabase.client.from('saved_posts').delete().eq('id', existing.id);
+      return { success: true, saved: false };
+    } else {
+      await this.supabase.client.from('saved_posts').insert({ post_id: id, user_id: user.id });
+      return { success: true, saved: true };
+    }
+  }
+
   @Delete(':id')
   async deletePost(@Headers('authorization') authHeader: string, @Param('id') id: string) {
     const user = await this.getUserFromToken(authHeader);
@@ -292,7 +402,26 @@ export class PostsController {
       .eq('post_id', id)
       .order('created_at', { ascending: true });
     if (error) return { success: false, error: error.message };
-    return { success: true, comments: data };
+
+    // Build a two-level tree: top-level comments with their direct replies
+    // nested under `replies`. Deeper nesting isn't modeled -- a reply-to-a-reply
+    // is flattened onto the original top-level comment's replies list, which
+    // matches how most comment UIs (including the one already in the mockup)
+    // render threads in practice.
+    const all = data ?? [];
+    const byId = new Map(all.map((c: any) => [c.id, { ...c, replies: [] as any[] }]));
+    const topLevel: any[] = [];
+
+    for (const c of all as any[]) {
+      const node = byId.get(c.id);
+      if (c.parent_comment_id && byId.has(c.parent_comment_id)) {
+        byId.get(c.parent_comment_id).replies.push(node);
+      } else {
+        topLevel.push(node);
+      }
+    }
+
+    return { success: true, comments: topLevel };
   }
 
   @Post(':id/comments')

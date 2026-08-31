@@ -68,6 +68,7 @@ export class StoriesController {
       console.error('Create story error:', error);
       return { success: false, error: error.message };
     }
+    console.log('[stories] created story:', { id: data.id, author_id: data.author_id, university_id: data.university_id, expires_at: data.expires_at });
     return { success: true, story: data };
   }
 
@@ -80,6 +81,8 @@ export class StoriesController {
       .select('university_id')
       .eq('id', user.id)
       .single();
+
+    console.log('[stories] requesting user:', user.id, 'university_id:', profile?.university_id);
 
     let query = this.supabase.client
       .from('stories')
@@ -99,6 +102,17 @@ export class StoriesController {
       console.error('Get stories error:', error);
       return { success: false, error: error.message };
     }
+
+    console.log(
+      '[stories] raw rows returned:',
+      (data ?? []).length,
+      (data ?? []).map((s: any) => ({
+        id: s.id,
+        author_id: s.author_id,
+        university_id: s.university_id,
+        expires_at: s.expires_at,
+      })),
+    );
 
     const storyIds = (data ?? []).map((s) => s.id);
     let viewedSet = new Set<string>();
@@ -129,6 +143,7 @@ export class StoriesController {
       entry.stories.push({ ...s, viewed });
     }
 
+    console.log('[stories] grouped author entries:', Array.from(grouped.values()).length);
     return { success: true, authors: Array.from(grouped.values()) };
   }
 

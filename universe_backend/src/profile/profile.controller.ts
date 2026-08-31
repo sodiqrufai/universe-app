@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Headers, Patch, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Delete } from '@nestjs/common';
@@ -6,7 +8,20 @@ import { Delete } from '@nestjs/common';
 
 @Controller('profile')
 export class ProfileController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly config: ConfigService,
+  ) {}
+
+  private getAuthClient() {
+    // Isolated, short-lived client for anything that touches auth.signIn/signUp/
+    // updateUser -- see the handoff doc's "shared session bug" lesson. Never reuse
+    // this.supabase.client (the service-role singleton) for auth flows.
+    return createClient(
+      this.config.get<string>('SUPABASE_URL')!,
+      this.config.get<string>('SUPABASE_ANON_KEY')!,
+    );
+  }
 
   private async getUserFromToken(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
@@ -18,6 +33,54 @@ export class ProfileController {
       throw new UnauthorizedException('Invalid token');
     }
     return data.user;
+  }
+
+  @Post('change-password')
+  async changePassword(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+
+    if (!body.currentPassword || !body.newPassword) {
+      return { success: false, error: 'Current and new password are required' };
+    }
+    if (body.newPassword.length < 6) {
+      return { success: false, error: 'New password must be at least 6 characters' };
+    }
+
+    const { data: userData } = await this.supabase.client.auth.admin.getUserById(user.id);
+    const email = userData?.user?.email;
+    if (!email) {
+      return { success: false, error: 'Could not resolve account email' };
+    }
+
+    // Verify the current password by attempting a real sign-in with it, on an
+    // isolated ephemeral client -- never the shared service-role singleton.
+    const authClient = this.getAuthClient();
+    const { error: verifyError } = await authClient.auth.signInWithPassword({
+      email,
+      password: body.currentPassword,
+    });
+
+    if (verifyError) {
+      return { success: false, error: 'Current password is incorrect' };
+    }
+
+    // Password updates must be applied via the service-role admin API, keyed by
+    // user id, rather than authClient.auth.updateUser -- that method operates on
+    // whatever session is currently active on the client, and mixing it with the
+    // signIn call above on the same client risks the exact session-bleed bug
+    // documented in the handoff. Using supabase.client.auth.admin.updateUserById
+    // sidesteps sessions entirely.
+    const { error: updateError } = await this.supabase.client.auth.admin.updateUserById(user.id, {
+      password: body.newPassword,
+    });
+
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+    return { success: true };
   }
 
   @Patch('update')
@@ -118,6 +181,12 @@ export class ProfileController {
 
     if (error) return { success: false, error: error.message };
 
+    const { data: profile } = await this.supabase.client
+      .from('profiles')
+      .select('locale')
+      .eq('id', user.id)
+      .single();
+
     return {
       success: true,
       settings: data ?? {
@@ -128,7 +197,25 @@ export class ProfileController {
         notify_events: true,
         notify_community: true,
       },
+      locale: profile?.locale ?? 'en',
     };
+  }
+
+  @Patch('locale')
+  async updateLocale(@Headers('authorization') authHeader: string, @Body() body: { locale: string }) {
+    const user = await this.getUserFromToken(authHeader);
+
+    if (!body.locale?.trim()) {
+      return { success: false, error: 'Locale is required' };
+    }
+
+    const { error } = await this.supabase.client
+      .from('profiles')
+      .update({ locale: body.locale.trim() })
+      .eq('id', user.id);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   }
 
   @Patch('settings')

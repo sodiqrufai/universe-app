@@ -16,7 +16,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   bool _loading = true;
   bool _hasError = false;
   final _commentController = TextEditingController();
+  final _commentFocusNode = FocusNode();
   bool _sending = false;
+  dynamic _replyingTo;
 
   @override
   void initState() {
@@ -47,11 +49,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (_commentController.text.trim().isEmpty) return;
     setState(() => _sending = true);
     try {
+      // Top-level replies always thread under the top-level ancestor,
+      // not the specific comment tapped — keeps nesting to one visual
+      // level instead of unbounded indentation, while still recording
+      // exactly who's being replied to via the visible "Replying to" tag.
+      final parentId = _replyingTo?['parent_comment_id'] ?? _replyingTo?['id'];
       final data = await ApiService.post('/posts/${widget.post['id']}/comments', {
         'content': _commentController.text.trim(),
+        if (parentId != null) 'parentCommentId': parentId,
       });
       if (data['success'] == true) {
         _commentController.clear();
+        setState(() => _replyingTo = null);
         _fetchComments();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,6 +76,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  void _startReply(dynamic comment) {
+    setState(() => _replyingTo = comment);
+    _commentFocusNode.requestFocus();
   }
 
   Future<void> _messageAuthor() async {
@@ -192,6 +206,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -285,23 +300,53 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      decoration: const InputDecoration(hintText: 'Write a comment...'),
+                  if (_replyingTo != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Replying to ${_replyingTo['profiles']?['full_name'] ?? 'comment'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _replyingTo = null),
+                            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _sending ? null : _sendComment,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                          )
-                        : const Icon(Icons.send, color: AppColors.primary),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          focusNode: _commentFocusNode,
+                          decoration: InputDecoration(
+                            hintText: _replyingTo != null ? 'Write a reply...' : 'Write a comment...',
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _sending ? null : _sendComment,
+                        icon: _sending
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : const Icon(Icons.send, color: AppColors.primary),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -337,41 +382,90 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         style: TextStyle(color: AppColors.textSecondary),
       );
     }
+
+    final topLevel = _comments.where((c) => c['parent_comment_id'] == null).toList();
+    final repliesByParent = <String, List<dynamic>>{};
+    for (final c in _comments) {
+      final parentId = c['parent_comment_id'];
+      if (parentId != null) {
+        repliesByParent.putIfAbsent(parentId, () => []).add(c);
+      }
+    }
+
     return Column(
-      children: _comments.map((c) {
-        final cProfile = c['profiles'];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-          child: Row(
+      children: topLevel.map((c) => _buildCommentThread(c, repliesByParent[c['id']] ?? [])).toList(),
+    );
+  }
+
+  Widget _buildCommentThread(dynamic comment, List<dynamic> replies) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCommentRow(comment, isReply: false),
+          if (replies.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 22, top: 8),
+              child: Container(
+                padding: const EdgeInsets.only(left: 14),
+                decoration: const BoxDecoration(
+                  border: Border(left: BorderSide(color: AppColors.border, width: 2)),
+                ),
+                child: Column(
+                  children: replies
+                      .map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: _buildCommentRow(r, isReply: true),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentRow(dynamic c, {required bool isReply}) {
+    final cProfile = c['profiles'];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: isReply ? 12 : 14,
+          backgroundColor: AppColors.lightPurple,
+          backgroundImage: cProfile?['avatar_url'] != null
+              ? NetworkImage(cProfile['avatar_url'])
+              : null,
+          child: cProfile?['avatar_url'] == null
+              ? Icon(Icons.person, size: isReply ? 12 : 14, color: AppColors.primary)
+              : null,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppColors.lightPurple,
-                backgroundImage: cProfile?['avatar_url'] != null
-                    ? NetworkImage(cProfile['avatar_url'])
-                    : null,
-                child: cProfile?['avatar_url'] == null
-                    ? const Icon(Icons.person, size: 14, color: AppColors.primary)
-                    : null,
+              Text(
+                cProfile?['full_name'] ?? 'Student',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      cProfile?['full_name'] ?? 'Student',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    Text(c['content'], style: const TextStyle(fontSize: 13)),
-                  ],
+              Text(c['content'], style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 2),
+              GestureDetector(
+                onTap: () => _startReply(c),
+                child: const Text(
+                  'Reply',
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 }

@@ -120,6 +120,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
             TextField(
               controller: _usernameController,
               autofocus: true,
+              textInputAction: TextInputAction.done,
               onChanged: (v) => setState(() => _error = null),
               onSubmitted: (_) => _continue(),
               decoration: const InputDecoration(

@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
 import 'university_selector_screen.dart';
-import 'register_screen.dart';
+import 'email_screen.dart';
 import 'main_shell.dart';
 import 'forgot_password_screen.dart';
 
@@ -179,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  MaterialPageRoute(builder: (_) => const EmailScreen()),
                 );
               },
               child: const Text('Don\'t have an account? Register'),

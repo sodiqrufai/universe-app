@@ -121,6 +121,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               controller: _confirmController,
               obscureText: _obscure,
               autofocus: true,
+              textInputAction: TextInputAction.done,
               onSubmitted: (_) => _continue(),
               decoration: InputDecoration(
                 labelText: 'Confirm password',

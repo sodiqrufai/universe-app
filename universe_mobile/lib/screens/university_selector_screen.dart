@@ -123,6 +123,8 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
             const SizedBox(height: AppSpacing.lg),
             TextField(
               onChanged: _search,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => FocusScope.of(context).unfocus(),
               decoration: const InputDecoration(
                 hintText: 'Search your university...',
                 prefixIcon: Icon(Icons.search),

@@ -64,6 +64,7 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
               controller: _passwordController,
               obscureText: _obscure,
               autofocus: true,
+              textInputAction: TextInputAction.next,
               onSubmitted: (_) => _continue(),
               decoration: InputDecoration(
                 labelText: 'Password',

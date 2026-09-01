@@ -2,38 +2,39 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/sign_up_data.dart';
-import 'username_screen.dart';
+import 'name_screen.dart';
 
-/// Step 2 of 12: Name. Still purely local state.
-class NameScreen extends StatefulWidget {
-  final SignUpData data;
-  const NameScreen({super.key, required this.data});
+/// Step 1 of 12: Email. Creates the SignUpData that every later step
+/// carries forward — nothing before ConfirmPasswordScreen touches the
+/// backend, so this is pure local state same as Name/Username/Password.
+class EmailScreen extends StatefulWidget {
+  const EmailScreen({super.key});
 
   @override
-  State<NameScreen> createState() => _NameScreenState();
+  State<EmailScreen> createState() => _EmailScreenState();
 }
 
-class _NameScreenState extends State<NameScreen> {
-  late final _nameController = TextEditingController(text: widget.data.fullName);
+class _EmailScreenState extends State<EmailScreen> {
+  final _emailController = TextEditingController();
   String? _error;
 
   void _continue() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty || !name.contains(' ')) {
-      setState(() => _error = 'Enter your full name');
+    final email = _emailController.text.trim();
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _error = 'Enter a valid email address');
       return;
     }
     setState(() => _error = null);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => UsernameScreen(data: widget.data.copyWith(fullName: name)),
+        builder: (_) => NameScreen(data: SignUpData(email: email)),
       ),
     );
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -46,27 +47,27 @@ class _NameScreenState extends State<NameScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 2, totalSteps: 12),
+            const StepProgressDots(currentStep: 1, totalSteps: 12),
             const SizedBox(height: 24),
             const Text(
-              'What\'s your name?',
+              'What\'s your email?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
             const Text(
-              'This is how other students will see you.',
+              'We\'ll use this to create your account.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             TextField(
-              controller: _nameController,
+              controller: _emailController,
               autofocus: true,
-              textCapitalization: TextCapitalization.words,
+              keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _continue(),
               decoration: const InputDecoration(
-                labelText: 'Full name',
-                prefixIcon: Icon(Icons.person_outline),
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
               ),
             ),
             const SizedBox(height: 16),

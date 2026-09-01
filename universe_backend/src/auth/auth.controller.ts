@@ -44,21 +44,44 @@ export class AuthController {
     });
 
     if (error) {
+      // Trust Supabase's own error for a genuine duplicate-signup rejection
+      // (this is what fires when email confirmation is off, the case that's
+      // live on this project today) rather than inferring it from an absent
+      // session, which is ambiguous and wrong for a real new user awaiting
+      // confirmation.
       return { success: false, error: error.message };
     }
 
-    if (!data.session) {
-      return { success: false, error: 'This email is already registered. Please log in instead.' };
+    if (!data.user) {
+      return { success: false, error: 'Registration failed unexpectedly' };
     }
 
+    // A profile row must exist the instant the auth account exists, full stop
+    // -- this can no longer be skipped by any branch below. If this insert
+    // hits a primary-key conflict (the ambiguous existing-user case Supabase
+    // itself can return with no error and no session, as an anti-enumeration
+    // measure when email confirmation is ON), it fails silently here, which is
+    // correct: that user already has a profile row from their original signup.
     await this.supabase.client.from('profiles').insert({
-      id: data.user!.id,
+      id: data.user.id,
       full_name: body.fullName?.trim() || null,
     });
 
+    if (!data.session) {
+      // No error AND no session = confirmation-pending, not a failure.
+      // NOTE: if email confirmation is ever turned ON for this project,
+      // Supabase can also return exactly this shape for a duplicate-email
+      // signup attempt, as a deliberate anti-enumeration design choice on
+      // their end -- that specific ambiguity isn't fully resolvable from this
+      // side of the API. Today, with confirmation OFF, this branch should only
+      // ever mean "awaiting confirmation."
+      return { success: true, needsConfirmation: true, userId: data.user.id };
+    }
+
     return {
       success: true,
-      userId: data.user?.id,
+      needsConfirmation: false,
+      userId: data.user.id,
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
     };

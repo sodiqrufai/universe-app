@@ -168,6 +168,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 hintText: 'e.g. Exam Tips, Hostel Life',
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.add, color: AppColors.primary),
+                  tooltip: 'Add tag',
                   onPressed: () => _addTag(_tagController.text),
                 ),
               ),
@@ -197,6 +198,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               children: [
                 IconButton(
                   onPressed: _pickImage,
+                  tooltip: 'Add image',
                   icon: const Icon(
                     Icons.image_outlined,
                     color: AppColors.primary,

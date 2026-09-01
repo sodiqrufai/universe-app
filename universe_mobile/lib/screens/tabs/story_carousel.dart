@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -22,9 +21,9 @@ class StoryCarousel extends StatefulWidget {
 
 class StoryCarouselState extends State<StoryCarousel> {
   List<dynamic> _authors = [];
+  Map<String, dynamic>? _myStoryGroup;
   bool _loading = true;
   String? _myUserId;
-  String? _myAvatarUrl;
   bool _uploading = false;
 
   @override
@@ -51,7 +50,11 @@ class StoryCarouselState extends State<StoryCarousel> {
         );
         setState(() {
           _authors = authors.where((a) => a['authorId'] != _myUserId).toList();
-          _myAvatarUrl = mine?['profile']?['avatar_url'];
+          // Previously this only kept the avatar URL out of `mine` and threw
+          // away the rest — meaning "Your Story" never reflected whether you
+          // actually had an active story, and tapping it could only ever
+          // open the upload picker, never view what you'd already posted.
+          _myStoryGroup = mine;
           _loading = false;
         });
       } else {
@@ -166,6 +169,16 @@ class StoryCarouselState extends State<StoryCarousel> {
     refresh();
   }
 
+  void _openMyStory() async {
+    if (_myStoryGroup == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StoryViewerScreen(authors: [_myStoryGroup!], startIndex: 0),
+      ),
+    );
+    refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -191,10 +204,26 @@ class StoryCarouselState extends State<StoryCarousel> {
   }
 
   Widget _buildYourStory() {
+    final hasStory = _myStoryGroup != null;
+    final hasUnviewed = _myStoryGroup?['hasUnviewed'] == true;
+    final myAvatarUrl = _myStoryGroup?['profile']?['avatar_url'];
+    final label = _uploading
+        ? 'Uploading your story'
+        : hasStory
+            ? (hasUnviewed ? 'Your story, unviewed' : 'Your story, viewed')
+            : 'Add to your story';
+
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.md),
-      child: GestureDetector(
-        onTap: _uploading ? null : _addStory,
+      child: Semantics(
+        button: true,
+        label: label,
+        child: GestureDetector(
+        // Tapping the ring itself views the existing story if there is
+        // one; only the small "+" badge starts a new upload. Previously
+        // the whole tile always opened the upload picker, even when a
+        // story already existed.
+        onTap: _uploading ? null : (hasStory ? _openMyStory : _addStory),
         child: Column(
           children: [
             SizedBox(
@@ -202,34 +231,60 @@ class StoryCarouselState extends State<StoryCarousel> {
               height: 60,
               child: Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.lightPurple,
-                    backgroundImage: _myAvatarUrl != null ? NetworkImage(_myAvatarUrl!) : null,
-                    child: _myAvatarUrl == null
-                        ? const Icon(Icons.person, color: AppColors.primary)
-                        : null,
+                  Container(
+                    width: 60,
+                    height: 60,
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: hasUnviewed
+                          ? const LinearGradient(colors: [AppColors.primary, AppColors.secondary])
+                          : null,
+                      color: (hasStory && !hasUnviewed) ? AppColors.border : null,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: AppColors.background,
+                        shape: BoxShape.circle,
+                      ),
+                      child: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: AppColors.lightPurple,
+                        backgroundImage: myAvatarUrl != null ? NetworkImage(myAvatarUrl) : null,
+                        child: myAvatarUrl == null
+                            ? const Icon(Icons.person, color: AppColors.primary)
+                            : null,
+                      ),
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.background, width: 2),
+                    child: Semantics(
+                      button: true,
+                      label: 'Add to your story',
+                      child: GestureDetector(
+                        onTap: _uploading ? null : _addStory,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.background, width: 2),
+                          ),
+                          child: _uploading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(3),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(Icons.add, size: 13, color: Colors.white),
+                        ),
                       ),
-                      child: _uploading
-                          ? const Padding(
-                              padding: EdgeInsets.all(3),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add, size: 13, color: Colors.white),
                     ),
                   ),
                 ],
@@ -238,6 +293,7 @@ class StoryCarouselState extends State<StoryCarousel> {
             const SizedBox(height: 4),
             const Text('Your Story', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
+        ),
         ),
       ),
     );
@@ -276,7 +332,10 @@ class StoryCarouselState extends State<StoryCarousel> {
 
     return Padding(
       padding: const EdgeInsets.only(right: AppSpacing.md),
-      child: GestureDetector(
+      child: Semantics(
+        button: true,
+        label: hasUnviewed ? "$name's story, unviewed" : "$name's story, viewed",
+        child: GestureDetector(
         onTap: () => _openViewer(index),
         child: Column(
           children: [
@@ -317,6 +376,7 @@ class StoryCarouselState extends State<StoryCarousel> {
               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
+        ),
         ),
       ),
     );

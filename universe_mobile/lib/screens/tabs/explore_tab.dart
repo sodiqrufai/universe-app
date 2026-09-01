@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/app_image.dart';
+import '../../widgets/state_views.dart';
 import '../course_detail_screen.dart';
 import '../event_detail_screen.dart';
 import '../service_detail_screen.dart';
@@ -298,23 +300,10 @@ class _ExploreTabState extends State<ExploreTab> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      );
+      return const LoadingView();
     }
     if (_totalFailure) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 40, color: Colors.black38),
-            const SizedBox(height: 12),
-            const Text('Could not load Explore'),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _fetchAll, child: const Text('Retry')),
-          ],
-        ),
-      );
+      return ErrorView(message: 'Could not load Explore', onRetry: _fetchAll);
     }
     final items = _filteredItems;
     if (items.isEmpty) {
@@ -432,7 +421,7 @@ class _ExploreTabState extends State<ExploreTab> {
                 children: [
                   Positioned.fill(
                     child: item.imageUrl != null
-                        ? Image.network(item.imageUrl!, fit: BoxFit.cover)
+                        ? AppNetworkImage(item.imageUrl!)
                         : Container(
                             color: badge.$2.withValues(alpha: 0.08),
                             child: Icon(badge.$1, color: badge.$2, size: 36),

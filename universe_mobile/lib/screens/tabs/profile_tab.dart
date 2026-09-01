@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/session_service.dart';
+import '../../widgets/state_views.dart';
 import '../edit_profile_screen.dart';
 import '../login_screen.dart';
 import '../verification_screen.dart';
@@ -71,27 +72,11 @@ class _ProfileTabState extends State<ProfileTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      );
+      return const LoadingView();
     }
 
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            const Text('Could not load your profile'),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _fetchProfile,
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+      return ErrorView(message: 'Could not load your profile', onRetry: _fetchProfile);
     }
 
     final isVerified = _profile?['is_verified'] == true;

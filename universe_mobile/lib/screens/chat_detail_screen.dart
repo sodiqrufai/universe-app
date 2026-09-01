@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:record/record.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/app_image.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -36,6 +41,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final _scrollController = ScrollController();
   Timer? _pollTimer;
   bool _showEmojiPicker = false;
+
+  final _recorder = AudioRecorder();
+  bool _isRecording = false;
+  int _recordSeconds = 0;
+  Timer? _recordTimer;
 
   static const _emojis = [
     '😀', '😂', '😍', '🥲', '😭', '😡', '🙏', '👍', '👎', '❤️',
@@ -105,13 +115,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
-  Future<void> _sendMessage({String? imagePath}) async {
-    if (_messageController.text.trim().isEmpty && imagePath == null) return;
+  Future<void> _sendMessage({String? imagePath, String? audioPath, int? durationSeconds}) async {
+    if (_messageController.text.trim().isEmpty && imagePath == null && audioPath == null) return;
 
     final text = _messageController.text.trim();
     _messageController.clear();
 
-    // Multipart (for the optional image attachment) — ApiService has no
+    // Multipart (for the optional image/voice attachment) — ApiService has no
     // file-upload method, same legitimate exception as Course's resource
     // upload, still using the same token source as everywhere else.
     try {
@@ -124,6 +134,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       if (text.isNotEmpty) request.fields['content'] = text;
       if (imagePath != null) {
         request.files.add(await http.MultipartFile.fromPath('attachment', imagePath));
+      } else if (audioPath != null) {
+        request.fields['mediaType'] = 'audio';
+        if (durationSeconds != null) {
+          request.fields['durationSeconds'] = durationSeconds.toString();
+        }
+        request.files.add(await http.MultipartFile.fromPath('attachment', audioPath));
       }
       final streamed = await request.send();
       final response = await http.Response.fromStream(streamed);
@@ -153,6 +169,49 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (picked != null) {
       await _sendMessage(imagePath: picked.path);
     }
+  }
+
+  Future<void> _startRecording() async {
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Microphone permission is needed to record voice notes')),
+        );
+      }
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+    if (!mounted) return;
+    setState(() {
+      _isRecording = true;
+      _recordSeconds = 0;
+    });
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _recordSeconds++);
+    });
+  }
+
+  Future<void> _stopRecordingAndSend() async {
+    if (!_isRecording) return;
+    _recordTimer?.cancel();
+    final path = await _recorder.stop();
+    final seconds = _recordSeconds;
+    if (mounted) setState(() => _isRecording = false);
+    // Anything under a second is almost certainly an accidental tap, not a
+    // real voice note — don't bother sending it.
+    if (path != null && seconds >= 1) {
+      await _sendMessage(audioPath: path, durationSeconds: seconds);
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    if (!_isRecording) return;
+    _recordTimer?.cancel();
+    await _recorder.stop();
+    if (mounted) setState(() => _isRecording = false);
   }
 
   Future<void> _showOptions() async {
@@ -284,6 +343,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _recordTimer?.cancel();
+    _recorder.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -311,7 +372,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: _showOptions),
+          IconButton(icon: const Icon(Icons.more_vert), tooltip: 'More options', onPressed: _showOptions),
         ],
       ),
       body: Column(
@@ -340,38 +401,84 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
-                      color: AppColors.primary,
-                    ),
-                    onPressed: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined, color: AppColors.primary),
-                    onPressed: _pickAndSendImage,
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      onTap: () {
-                        if (_showEmojiPicker) setState(() => _showEmojiPicker = false);
-                      },
-                      decoration: const InputDecoration(hintText: 'Type a message...'),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: AppColors.primary),
-                    onPressed: () => _sendMessage(),
-                  ),
-                ],
-              ),
+              child: _isRecording ? _buildRecordingRow() : _buildComposeRow(),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildComposeRow() {
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(
+            _showEmojiPicker ? Icons.keyboard : Icons.emoji_emotions_outlined,
+            color: AppColors.primary,
+          ),
+          tooltip: _showEmojiPicker ? 'Show keyboard' : 'Show emoji picker',
+          onPressed: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
+        ),
+        IconButton(
+          icon: const Icon(Icons.image_outlined, color: AppColors.primary),
+          tooltip: 'Attach image',
+          onPressed: _pickAndSendImage,
+        ),
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            onTap: () {
+              if (_showEmojiPicker) setState(() => _showEmojiPicker = false);
+            },
+            decoration: const InputDecoration(hintText: 'Type a message...'),
+          ),
+        ),
+        // Press and hold to record, release to send — same interaction
+        // pattern as WhatsApp/Telegram/iMessage.
+        Semantics(
+          label: 'Hold to record a voice note',
+          button: true,
+          child: GestureDetector(
+            onLongPressStart: (_) => _startRecording(),
+            onLongPressEnd: (_) => _stopRecordingAndSend(),
+            onLongPressCancel: _cancelRecording,
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.mic_none, color: AppColors.primary),
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.send, color: AppColors.primary),
+          tooltip: 'Send message',
+          onPressed: () => _sendMessage(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingRow() {
+    return Row(
+      children: [
+        const Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Recording  ${_formatDuration(Duration(seconds: _recordSeconds))}',
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        TextButton(
+          onPressed: _cancelRecording,
+          child: const Text('Cancel'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.send, color: AppColors.primary),
+          tooltip: 'Send voice note',
+          onPressed: _stopRecordingAndSend,
+        ),
+      ],
     );
   }
 
@@ -418,9 +525,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: InteractiveViewer(
               minScale: 0.5,
               maxScale: 4,
-              child: Image.network(
-                url,
-                errorBuilder: (_, _, _) => const Icon(
+              child: CachedNetworkImage(
+                imageUrl: url,
+                placeholder: (context, url) => const CircularProgressIndicator(color: Colors.white54),
+                errorWidget: (context, url, error) => const Icon(
                   Icons.broken_image_outlined,
                   color: Colors.white54,
                   size: 60,
@@ -469,19 +577,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (m['attachment_url'] != null)
+                      if (m['attachment_url'] != null && m['media_type'] == 'audio')
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: _VoiceMessageBubble(
+                            url: m['attachment_url'],
+                            durationSeconds: m['duration_seconds'] ?? 0,
+                            isMine: isMine,
+                          ),
+                        )
+                      else if (m['attachment_url'] != null)
                         GestureDetector(
                           onTap: () => _openImageViewer(m['attachment_url']),
-                          child: ClipRRect(
+                          child: AppNetworkImage(
+                            m['attachment_url'],
+                            width: 180,
                             borderRadius: BorderRadius.circular(AppRadius.medium),
-                            child: Image.network(
-                              m['attachment_url'],
-                              width: 180,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.broken_image_outlined,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
                           ),
                         ),
                       if (m['content'] != null)
@@ -554,6 +665,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             IconButton(
               iconSize: 32,
               icon: const Icon(Icons.thumb_up, color: AppColors.primary),
+              tooltip: 'React with thumbs up',
               onPressed: () {
                 Navigator.pop(context);
                 _reactToMessage(messageId, index, 'like');
@@ -563,6 +675,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             IconButton(
               iconSize: 32,
               icon: const Icon(Icons.favorite, color: Colors.red),
+              tooltip: 'React with heart',
               onPressed: () {
                 Navigator.pop(context);
                 _reactToMessage(messageId, index, 'love');
@@ -605,5 +718,135 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _messages[index]['reactionCounts'] = revertCounts;
       });
     }
+  }
+}
+
+String _formatDuration(Duration d) {
+  final minutes = d.inMinutes;
+  final seconds = d.inSeconds.remainder(60);
+  return '$minutes:${seconds.toString().padLeft(2, '0')}';
+}
+
+/// Play/pause button + progress bar + duration label for a voice-note
+/// message bubble. Duration comes from the backend (`duration_seconds`)
+/// so we never need to probe the audio file client-side just to show a
+/// label — only to actually play it.
+class _VoiceMessageBubble extends StatefulWidget {
+  final String url;
+  final int durationSeconds;
+  final bool isMine;
+
+  const _VoiceMessageBubble({
+    required this.url,
+    required this.durationSeconds,
+    required this.isMine,
+  });
+
+  @override
+  State<_VoiceMessageBubble> createState() => _VoiceMessageBubbleState();
+}
+
+class _VoiceMessageBubbleState extends State<_VoiceMessageBubble> {
+  final _player = AudioPlayer();
+  bool _isPlaying = false;
+  bool _loaded = false;
+  Duration _position = Duration.zero;
+  StreamSubscription<PlayerState>? _stateSub;
+  StreamSubscription<Duration>? _posSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _stateSub = _player.playerStateStream.listen((state) {
+      if (!mounted) return;
+      final playing = state.playing && state.processingState != ProcessingState.completed;
+      setState(() => _isPlaying = playing);
+      if (state.processingState == ProcessingState.completed) {
+        _player.seek(Duration.zero);
+        setState(() => _position = Duration.zero);
+      }
+    });
+    _posSub = _player.positionStream.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+  }
+
+  Future<void> _toggle() async {
+    try {
+      if (!_loaded) {
+        await _player.setUrl(widget.url);
+        _loaded = true;
+      }
+      if (_isPlaying) {
+        await _player.pause();
+      } else {
+        await _player.play();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not play this voice note')));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _stateSub?.cancel();
+    _posSub?.cancel();
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = Duration(seconds: widget.durationSeconds);
+    final progress = total.inMilliseconds > 0
+        ? (_position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0)
+        : 0.0;
+    final remaining = _position > Duration.zero ? (total - _position) : total;
+    final label = _formatDuration(remaining.isNegative ? Duration.zero : remaining);
+    final color = widget.isMine ? Colors.white : AppColors.primary;
+
+    return SizedBox(
+      width: 180,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: _toggle,
+            child: Icon(
+              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
+              size: 32,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 3,
+                    backgroundColor: color.withValues(alpha: 0.25),
+                    valueColor: AlwaysStoppedAnimation(color),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.85)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

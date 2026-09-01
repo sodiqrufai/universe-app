@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/restricted_dialog.dart';
+import '../../widgets/state_views.dart';
 import '../anonymous_post_detail_screen.dart';
 import '../anonymous_setup_screen.dart';
 
@@ -194,21 +195,10 @@ class _AnonymousTabState extends State<AnonymousTab> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const LoadingView();
     }
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            const Text('Could not load Anonymous'),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _checkProfileAndFetch, child: const Text('Retry')),
-          ],
-        ),
-      );
+      return ErrorView(message: 'Could not load Anonymous', onRetry: _checkProfileAndFetch);
     }
 
     return RefreshIndicator(

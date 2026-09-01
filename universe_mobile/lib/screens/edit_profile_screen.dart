@@ -201,7 +201,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         Positioned(
                           bottom: 0,
                           right: 0,
-                          child: GestureDetector(
+                          child: Semantics(
+                            button: true,
+                            label: 'Change profile photo',
+                            child: GestureDetector(
                             onTap: _uploadingPhoto ? null : _pickAndUploadImage,
                             child: CircleAvatar(
                               radius: 18,
@@ -220,6 +223,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                       size: 18,
                                       color: Colors.white,
                                     ),
+                            ),
                             ),
                           ),
                         ),

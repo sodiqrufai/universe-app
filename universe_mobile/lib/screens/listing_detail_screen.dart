@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../widgets/app_image.dart';
 import 'chat_detail_screen.dart';
 
 class ListingDetailScreen extends StatefulWidget {
@@ -329,10 +330,15 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
         title: const Text('Listing'),
         actions: [
           if (!isMine)
-            IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Report listing',
+              onPressed: _report,
+            ),
           if (isMine)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              tooltip: 'Delete listing',
               onPressed: _deleteListing,
             ),
         ],
@@ -364,6 +370,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                         isSaved ? Icons.bookmark : Icons.bookmark_border,
                         color: AppColors.primary,
                       ),
+                      tooltip: isSaved ? 'Unsave listing' : 'Save listing',
                       onPressed: _toggleSave,
                     ),
                   ],
@@ -430,7 +437,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             onPageChanged: (i) => setState(() => _imagePage = i),
             children: images
                 .map<Widget>(
-                  (img) => Image.network(img['image_url'], fit: BoxFit.cover),
+                  (img) => AppNetworkImage(img['image_url']),
                 )
                 .toList(),
           ),
@@ -555,10 +562,12 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               if (o['status'] == 'pending') ...[
                 IconButton(
                   icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+                  tooltip: 'Accept offer',
                   onPressed: () => _respondToOffer(o['id'], 'accepted'),
                 ),
                 IconButton(
                   icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                  tooltip: 'Decline offer',
                   onPressed: () => _respondToOffer(o['id'], 'rejected'),
                 ),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../widgets/app_image.dart';
 import 'chat_detail_screen.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
@@ -266,10 +267,15 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         title: const Text('Service'),
         actions: [
           if (!isMine)
-            IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Report service',
+              onPressed: _report,
+            ),
           if (isMine)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              tooltip: 'Delete service',
               onPressed: _deleteService,
             ),
         ],
@@ -283,7 +289,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               child: PageView(
                 children: images
                     .map<Widget>(
-                      (img) => Image.network(img['image_url'], fit: BoxFit.cover),
+                      (img) => AppNetworkImage(img['image_url']),
                     )
                     .toList(),
               ),

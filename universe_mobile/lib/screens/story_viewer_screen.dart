@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -320,10 +321,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     if (isMine)
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.white),
+                        tooltip: 'Delete story',
                         onPressed: () => _deleteStory(story['id']),
                       ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
+                      tooltip: 'Close',
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                   ],
@@ -362,17 +365,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         ),
       );
     }
-    return Image.network(
-      story['media_url'],
+    return CachedNetworkImage(
+      imageUrl: story['media_url'],
       fit: BoxFit.contain,
       width: double.infinity,
       height: double.infinity,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        );
-      },
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+      errorWidget: (context, url, error) => const Center(
+        child: Icon(Icons.broken_image_outlined, color: Colors.white54, size: 60),
+      ),
     );
   }
 }

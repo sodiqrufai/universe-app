@@ -16,7 +16,9 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
   bool _loading = true;
   bool _hasError = false;
   final _commentController = TextEditingController();
+  final _commentFocusNode = FocusNode();
   bool _sending = false;
+  dynamic _replyingTo;
 
   @override
   void initState() {
@@ -30,6 +32,8 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
       _hasError = false;
     });
     try {
+      // Backend now returns a ready-built two-level tree here too — same
+      // contract as posts.controller.ts's comments endpoint.
       final data = await ApiService.get(
         '/anonymous/posts/${widget.post['id']}/comments',
       );
@@ -49,12 +53,17 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
     if (_commentController.text.trim().isEmpty) return;
     setState(() => _sending = true);
     try {
+      final parentId = _replyingTo?['parent_comment_id'] ?? _replyingTo?['id'];
       final data = await ApiService.post(
         '/anonymous/posts/${widget.post['id']}/comments',
-        {'content': _commentController.text.trim()},
+        {
+          'content': _commentController.text.trim(),
+          if (parentId != null) 'parentCommentId': parentId,
+        },
       );
       if (data['success'] == true) {
         _commentController.clear();
+        setState(() => _replyingTo = null);
         _fetchComments();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +78,35 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _startReply(dynamic comment) {
+    setState(() => _replyingTo = comment);
+    _commentFocusNode.requestFocus();
+  }
+
+  Future<void> _toggleCommentReaction(dynamic comment) async {
+    final wasReacted = comment['hasReacted'] == true;
+    setState(() {
+      comment['hasReacted'] = !wasReacted;
+      comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
+    });
+    try {
+      final data = await ApiService.post('/anonymous/comments/${comment['id']}/react', {});
+      if (data['success'] != true && mounted) {
+        setState(() {
+          comment['hasReacted'] = wasReacted;
+          comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          comment['hasReacted'] = wasReacted;
+          comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
     }
   }
 
@@ -125,6 +163,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -136,7 +175,11 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
       appBar: AppBar(
         title: const Text('Anonymous Post'),
         actions: [
-          IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
+          IconButton(
+            icon: const Icon(Icons.flag_outlined),
+            tooltip: 'Report post',
+            onPressed: _report,
+          ),
         ],
       ),
       body: Column(
@@ -161,23 +204,54 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      decoration: const InputDecoration(hintText: 'Reply anonymously...'),
+                  if (_replyingTo != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Replying to @${_replyingTo['anonymous_profiles']?['anonymous_username'] ?? 'anonymous'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => setState(() => _replyingTo = null),
+                            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _sending ? null : _sendComment,
-                    icon: _sending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                          )
-                        : const Icon(Icons.send, color: AppColors.primary),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          focusNode: _commentFocusNode,
+                          decoration: InputDecoration(
+                            hintText: _replyingTo != null ? 'Reply anonymously...' : 'Reply anonymously...',
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _sending ? null : _sendComment,
+                        tooltip: 'Send reply',
+                        icon: _sending
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : const Icon(Icons.send, color: AppColors.primary),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -208,27 +282,96 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
       return const Text('No comments yet.', style: TextStyle(color: AppColors.textSecondary));
     }
     return Column(
-      children: _comments.map((c) {
-        final cUsername =
-            c['anonymous_profiles']?['anonymous_username'] ?? 'anonymous';
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '@$cUsername',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
+      children: _comments.map((c) => _buildCommentThread(c)).toList(),
+    );
+  }
+
+  Widget _buildCommentThread(dynamic comment) {
+    final replies = (comment['replies'] as List<dynamic>?) ?? [];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCommentRow(comment, isReply: false),
+          if (replies.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 8, top: 8),
+              child: Container(
+                padding: const EdgeInsets.only(left: 14),
+                decoration: const BoxDecoration(
+                  border: Border(left: BorderSide(color: AppColors.border, width: 2)),
+                ),
+                child: Column(
+                  children: replies
+                      .map(
+                        (r) => Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: _buildCommentRow(r, isReply: true),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
-              Text(c['content'], style: const TextStyle(fontSize: 13)),
-            ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentRow(dynamic c, {required bool isReply}) {
+    final cUsername = c['anonymous_profiles']?['anonymous_username'] ?? 'anonymous';
+    final hasReacted = c['hasReacted'] == true;
+    final reactionCount = c['reactionCount'] ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '@$cUsername',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
           ),
-        );
-      }).toList(),
+        ),
+        Text(c['content'], style: const TextStyle(fontSize: 13)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Semantics(
+              button: true,
+              label: hasReacted ? 'Remove like from comment' : 'Like comment',
+              child: GestureDetector(
+                onTap: () => _toggleCommentReaction(c),
+                child: Row(
+                  children: [
+                    Icon(
+                      hasReacted ? Icons.favorite : Icons.favorite_border,
+                      size: 13,
+                      color: hasReacted ? Colors.red : AppColors.textMuted,
+                    ),
+                    if (reactionCount > 0) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        '$reactionCount',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            GestureDetector(
+              onTap: () => _startReply(c),
+              child: const Text(
+                'Reply',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

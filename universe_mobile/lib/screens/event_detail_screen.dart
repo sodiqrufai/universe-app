@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../widgets/app_image.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -213,10 +214,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         title: const Text('Event'),
         actions: [
           if (!isMine)
-            IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
+            IconButton(
+              icon: const Icon(Icons.flag_outlined),
+              tooltip: 'Report event',
+              onPressed: _report,
+            ),
           if (isMine && !isCancelled)
             IconButton(
               icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+              tooltip: 'Cancel event',
               onPressed: _cancelEvent,
             ),
         ],
@@ -225,10 +231,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           if (_event!['cover_image_url'] != null)
-            Image.network(
+            AppNetworkImage(
               _event!['cover_image_url'],
               height: 220,
-              fit: BoxFit.cover,
               width: double.infinity,
             )
           else

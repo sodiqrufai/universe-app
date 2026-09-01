@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
-import '../services/session_service.dart';
+// import '../services/session_service.dart';
 
 /// There's no in-app "enter old + new password" endpoint on this
 /// backend — the only thing that exists is /auth/reset-password, which
@@ -43,7 +43,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       _error = null;
     });
     try {
-      final token = await SessionService.getToken();
+      // final token = await SessionService.getToken();
       // /auth/reset-password takes only {email} and needs no auth
       // token itself, but we still route it through the same base
       // config as everywhere else for consistency.

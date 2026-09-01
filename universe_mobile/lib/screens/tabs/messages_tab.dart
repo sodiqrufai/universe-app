@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/state_views.dart';
 import '../chat_detail_screen.dart';
 
 enum _MsgFilter { all, groups, unread }
@@ -83,23 +84,10 @@ class _MessagesTabState extends State<MessagesTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
-      );
+      return const LoadingView();
     }
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            const Text('Could not load your messages'),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _fetchInbox, child: const Text('Retry')),
-          ],
-        ),
-      );
+      return ErrorView(message: 'Could not load your messages', onRetry: _fetchInbox);
     }
 
     return Column(
@@ -114,6 +102,7 @@ class _MessagesTabState extends State<MessagesTab> {
               suffixIcon: _query.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.close, size: 18),
+                      tooltip: 'Clear search',
                       onPressed: () => _searchController.clear(),
                     )
                   : null,

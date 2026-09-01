@@ -409,6 +409,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.tune),
+                  tooltip: 'Filter resources',
                   onPressed: _showFilterSheet,
                 ),
               ),
@@ -556,6 +557,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 if (isCreator)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    tooltip: 'Delete group',
                     onPressed: () => _deleteGroup(g['id']),
                   ),
                 OutlinedButton(

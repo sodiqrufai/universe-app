@@ -62,6 +62,7 @@ class _MainShellState extends State<MainShell> {
           if (_currentIndex == 4)
             IconButton(
               icon: const Icon(Icons.settings_outlined),
+              tooltip: 'Settings',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -73,6 +74,7 @@ class _MainShellState extends State<MainShell> {
             children: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
+                tooltip: 'Notifications',
                 onPressed: () async {
                   await Navigator.of(context).push(
                     MaterialPageRoute(

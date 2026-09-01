@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/app_image.dart';
+import '../../widgets/state_views.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
 import '../trending_screen.dart';
@@ -185,21 +187,10 @@ class _FeedTabState extends State<FeedTab> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const LoadingView();
     }
     if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            const Text('Could not load the feed'),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _fetchAll, child: const Text('Retry')),
-          ],
-        ),
-      );
+      return ErrorView(message: 'Could not load the feed', onRetry: _fetchAll);
     }
     return RefreshIndicator(
       onRefresh: () async {
@@ -365,9 +356,31 @@ class _FeedTabState extends State<FeedTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  a['title'] ?? '',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        a['title'] ?? '',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    if (a['senderLabel'] != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: Text(
+                          a['senderLabel'],
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -472,25 +485,20 @@ class _FeedTabState extends State<FeedTab> {
               ],
               if (post['image_url'] != null) ...[
                 const SizedBox(height: 10),
-                ClipRRect(
+                AppNetworkImage(
+                  post['image_url'],
+                  width: double.infinity,
+                  height: 180,
                   borderRadius: BorderRadius.circular(AppRadius.medium),
-                  child: Image.network(
-                    post['image_url'],
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 180,
-                    errorBuilder: (_, _, _) => Container(
-                      height: 180,
-                      color: AppColors.lightPurple,
-                      child: const Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
-                    ),
-                  ),
                 ),
               ],
               const SizedBox(height: 10),
               Row(
                 children: [
-                  GestureDetector(
+                  Semantics(
+                    button: true,
+                    label: iLiked ? 'Remove like' : 'Like this post',
+                    child: GestureDetector(
                     onTap: () => _toggleReaction(post['id'], index, 'like'),
                     child: Row(
                       children: [
@@ -506,9 +514,13 @@ class _FeedTabState extends State<FeedTab> {
                         ),
                       ],
                     ),
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  GestureDetector(
+                  Semantics(
+                    button: true,
+                    label: iLoved ? 'Remove love reaction' : 'Love this post',
+                    child: GestureDetector(
                     onTap: () => _toggleReaction(post['id'], index, 'love'),
                     child: Row(
                       children: [
@@ -524,11 +536,16 @@ class _FeedTabState extends State<FeedTab> {
                         ),
                       ],
                     ),
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  GestureDetector(
+                  Semantics(
+                    button: true,
+                    label: 'Reshare this post',
+                    child: GestureDetector(
                     onTap: () => _reshare(post['id']),
                     child: const Icon(Icons.repeat, size: 18, color: AppColors.textSecondary),
+                    ),
                   ),
                   const SizedBox(width: 20),
                   const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
@@ -538,12 +555,16 @@ class _FeedTabState extends State<FeedTab> {
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const Spacer(),
-                  GestureDetector(
+                  Semantics(
+                    button: true,
+                    label: isSaved ? 'Remove from saved posts' : 'Save post',
+                    child: GestureDetector(
                     onTap: () => _toggleSave(post['id'], index),
                     child: Icon(
                       isSaved ? Icons.bookmark : Icons.bookmark_border,
                       size: 18,
                       color: isSaved ? AppColors.primary : AppColors.textSecondary,
+                    ),
                     ),
                   ),
                 ],

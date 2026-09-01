@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/app_image.dart';
 import 'chat_detail_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -81,6 +82,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void _startReply(dynamic comment) {
     setState(() => _replyingTo = comment);
     _commentFocusNode.requestFocus();
+  }
+
+  Future<void> _toggleCommentReaction(dynamic comment) async {
+    final wasReacted = comment['hasReacted'] == true;
+    setState(() {
+      comment['hasReacted'] = !wasReacted;
+      comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
+    });
+    try {
+      final data = await ApiService.post('/posts/comments/${comment['id']}/react', {});
+      if (data['success'] != true && mounted) {
+        setState(() {
+          comment['hasReacted'] = wasReacted;
+          comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          comment['hasReacted'] = wasReacted;
+          comment['reactionCount'] = (comment['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
+    }
   }
 
   Future<void> _messageAuthor() async {
@@ -263,28 +288,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
                 if (widget.post['image_url'] != null) ...[
                   const SizedBox(height: AppSpacing.md),
-                  ClipRRect(
+                  AppNetworkImage(
+                    widget.post['image_url'],
+                    width: double.infinity,
+                    height: 200,
                     borderRadius: BorderRadius.circular(AppRadius.medium),
-                    child: Image.network(
-                      widget.post['image_url'],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
-                          height: 200,
-                          color: AppColors.lightPurple,
-                          child: const Center(
-                            child: CircularProgressIndicator(color: AppColors.primary),
-                          ),
-                        );
-                      },
-                      errorBuilder: (_, _, _) => Container(
-                        height: 200,
-                        color: AppColors.lightPurple,
-                        child: const Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
-                      ),
-                    ),
                   ),
                 ],
                 const Divider(height: 32),
@@ -338,6 +346,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ),
                       IconButton(
                         onPressed: _sending ? null : _sendComment,
+                        tooltip: 'Send comment',
                         icon: _sending
                             ? const SizedBox(
                                 width: 18,
@@ -383,21 +392,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
 
-    final topLevel = _comments.where((c) => c['parent_comment_id'] == null).toList();
-    final repliesByParent = <String, List<dynamic>>{};
-    for (final c in _comments) {
-      final parentId = c['parent_comment_id'];
-      if (parentId != null) {
-        repliesByParent.putIfAbsent(parentId, () => []).add(c);
-      }
-    }
-
+    // Backend now returns a ready-built two-level tree — each top-level
+    // comment already carries its own `replies` list, deeper nesting
+    // pre-flattened server-side. No client-side grouping needed anymore.
     return Column(
-      children: topLevel.map((c) => _buildCommentThread(c, repliesByParent[c['id']] ?? [])).toList(),
+      children: _comments.map((c) => _buildCommentThread(c)).toList(),
     );
   }
 
-  Widget _buildCommentThread(dynamic comment, List<dynamic> replies) {
+  Widget _buildCommentThread(dynamic comment) {
+    final replies = (comment['replies'] as List<dynamic>?) ?? [];
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
@@ -431,6 +435,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   Widget _buildCommentRow(dynamic c, {required bool isReply}) {
     final cProfile = c['profiles'];
+    final hasReacted = c['hasReacted'] == true;
+    final reactionCount = c['reactionCount'] ?? 0;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -454,13 +460,41 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               Text(c['content'], style: const TextStyle(fontSize: 13)),
-              const SizedBox(height: 2),
-              GestureDetector(
-                onTap: () => _startReply(c),
-                child: const Text(
-                  'Reply',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
-                ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: hasReacted ? 'Remove like from comment' : 'Like comment',
+                    child: GestureDetector(
+                    onTap: () => _toggleCommentReaction(c),
+                    child: Row(
+                      children: [
+                        Icon(
+                          hasReacted ? Icons.favorite : Icons.favorite_border,
+                          size: 13,
+                          color: hasReacted ? Colors.red : AppColors.textMuted,
+                        ),
+                        if (reactionCount > 0) ...[
+                          const SizedBox(width: 3),
+                          Text(
+                            '$reactionCount',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          ),
+                        ],
+                      ],
+                    ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => _startReply(c),
+                    child: const Text(
+                      'Reply',
+                      style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

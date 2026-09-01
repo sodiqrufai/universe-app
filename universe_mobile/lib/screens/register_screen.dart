@@ -1,12 +1,12 @@
+import '../../config/api_config.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
-import '../widgets/step_progress_dots.dart';
-import '../models/sign_up_data.dart';
-import 'name_screen.dart';
+import '../services/session_service.dart';
+import 'university_selector_screen.dart';
 import 'login_screen.dart';
 
-/// Step 1 of 12: Email. Purely local — nothing hits the backend until
-/// step 5, since /auth/register needs email + password together.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -16,27 +16,65 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  bool _loading = false;
   String? _error;
 
-  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  Future<void> _register() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
 
-  void _continue() {
-    final email = _emailController.text.trim();
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() => _error = 'Enter a valid email address');
-      return;
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (data['success'] == true) {
+        await SessionService.save(
+          data['accessToken'],
+          data['userId'],
+          refreshToken: data['refreshToken'],
+        );
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const UniversitySelectorScreen()),
+          );
+        }
+      } else {
+        setState(() {
+          _error = data['error'] ?? 'Registration failed';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Could not connect: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
-    setState(() => _error = null);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => NameScreen(data: SignUpData(email: email)),
-      ),
-    );
   }
 
   @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -49,35 +87,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 1, totalSteps: 12),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             const Text(
-              'What\'s your email?',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              'Join UniVerse',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
-              'We\'ll use this to verify you\'re a student and for account recovery.',
-              style: TextStyle(color: AppColors.textSecondary),
+              'Create your student account to get started.',
+              style: TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 24),
             TextField(
               controller: _emailController,
+              focusNode: _emailFocus,
               keyboardType: TextInputType.emailAddress,
-              autofocus: true,
-              onSubmitted: (_) => _continue(),
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _passwordFocus.requestFocus(),
               decoration: const InputDecoration(
                 labelText: 'Email',
                 prefixIcon: Icon(Icons.email_outlined),
               ),
             ),
             const SizedBox(height: 16),
+            TextField(
+              controller: _passwordController,
+              focusNode: _passwordFocus,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _loading ? null : _register(),
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+            const SizedBox(height: 24),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: const TextStyle(color: Colors.red)),
               ),
-            ElevatedButton(onPressed: _continue, child: const Text('Continue')),
+            ElevatedButton(
+              onPressed: _loading ? null : _register,
+              child: _loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text('Create Account'),
+            ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
@@ -87,9 +153,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               },
               child: const Text('Already have an account? Log In'),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 }
+

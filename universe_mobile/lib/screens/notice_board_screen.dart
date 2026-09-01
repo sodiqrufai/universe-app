@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/app_image.dart';
 
 /// Notice Board: official announcements from verified university-official
 /// accounts (posts.type = 'notice'). Reverse-chronological, read-only —
@@ -124,14 +125,10 @@ class _NoticeBoardScreenState extends State<NoticeBoardScreen> {
           Text(n['content'] ?? '', style: const TextStyle(fontSize: 14, height: 1.4)),
           if (n['image_url'] != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            ClipRRect(
+            AppNetworkImage(
+              n['image_url'],
+              width: double.infinity,
               borderRadius: BorderRadius.circular(AppRadius.medium),
-              child: Image.network(
-                n['image_url'],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
             ),
           ],
         ],

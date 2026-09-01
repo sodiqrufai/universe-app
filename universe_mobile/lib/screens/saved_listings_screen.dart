@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/app_image.dart';
 import 'listing_detail_screen.dart';
 import 'post_detail_screen.dart';
 
@@ -91,18 +92,11 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
           return Card(
             child: ListTile(
               leading: imageUrl != null
-                  ? ClipRRect(
+                  ? AppNetworkImage(
+                      imageUrl,
+                      width: 50,
+                      height: 50,
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        imageUrl,
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(
-                          Icons.broken_image_outlined,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
                     )
                   : const Icon(Icons.image_outlined, color: AppColors.primary),
               title: Text(l['title']),

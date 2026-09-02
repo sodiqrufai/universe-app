@@ -58,7 +58,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
         '/anonymous/posts/${widget.post['id']}/comments',
         {
           'content': _commentController.text.trim(),
-          if (parentId != null) 'parentCommentId': parentId,
+          'parentCommentId': ?parentId,
         },
       );
       if (data['success'] == true) {

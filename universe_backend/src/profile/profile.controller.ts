@@ -162,6 +162,7 @@ export class ProfileController {
   @Post(':id/follow')
   async followUser(@Headers('authorization') authHeader: string, @Param('id') targetId: string) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     if (targetId === user.id) {
       return { success: false, error: 'Cannot follow yourself' };

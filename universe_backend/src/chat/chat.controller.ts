@@ -444,6 +444,7 @@ export class ChatController {
     @Body() body: { reactionType?: string },
   ) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
     const reactionType = body.reactionType === 'love' ? 'love' : 'like';
 
     const { data: message } = await this.supabase.client

@@ -95,6 +95,7 @@ class StoryCarouselState extends State<StoryCarousel> {
     if (picked == null) return;
 
     final captionController = TextEditingController();
+    if (!mounted) return;
     final caption = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(

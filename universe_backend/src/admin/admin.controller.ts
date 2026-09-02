@@ -133,7 +133,18 @@ export class AdminController {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (search) query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`);
+    if (search) {
+      // PostgREST's .or() parses a raw filter-expression string, so unescaped
+      // user input here is a filter-injection risk (commas/parens/dots can
+      // alter query logic, not just the search term). Strip anything that
+      // isn't alphanumeric/space/common name characters before it ever
+      // reaches the filter string -- real names/usernames don't need any of
+      // the stripped characters anyway.
+      const safeSearch = search.replace(/[^a-zA-Z0-9 _'-]/g, '');
+      if (safeSearch) {
+        query = query.or(`full_name.ilike.%${safeSearch}%,username.ilike.%${safeSearch}%`);
+      }
+    }
     if (filter === 'verified') query = query.eq('is_verified', true);
     if (filter === 'unverified') query = query.eq('is_verified', false);
     if (filter === 'suspended') query = query.eq('is_suspended', true);

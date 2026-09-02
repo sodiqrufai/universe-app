@@ -68,17 +68,21 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          RadioListTile<String>(
-            title: const Text('Everyone'),
-            value: 'everyone',
+          RadioGroup<String>(
             groupValue: _visibility,
             onChanged: (v) => setState(() => _visibility = v!),
-          ),
-          RadioListTile<String>(
-            title: const Text('My university only'),
-            value: 'university_only',
-            groupValue: _visibility,
-            onChanged: (v) => setState(() => _visibility = v!),
+            child: Column(
+              children: const [
+                RadioListTile<String>(
+                  title: Text('Everyone'),
+                  value: 'everyone',
+                ),
+                RadioListTile<String>(
+                  title: Text('My university only'),
+                  value: 'university_only',
+                ),
+              ],
+            ),
           ),
           const Divider(),
           SwitchListTile(

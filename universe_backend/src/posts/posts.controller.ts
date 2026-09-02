@@ -476,6 +476,7 @@ export class PostsController {
   @Post('comments/:id/react')
   async toggleCommentReaction(@Headers('authorization') authHeader: string, @Param('id') commentId: string) {
     const user = await this.getUserFromToken(authHeader);
+    await this.supabase.assertNotRestricted(user.id);
 
     const { data: existing } = await this.supabase.client
       .from('comment_reactions')

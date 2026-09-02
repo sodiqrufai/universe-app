@@ -57,7 +57,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       final parentId = _replyingTo?['parent_comment_id'] ?? _replyingTo?['id'];
       final data = await ApiService.post('/posts/${widget.post['id']}/comments', {
         'content': _commentController.text.trim(),
-        if (parentId != null) 'parentCommentId': parentId,
+        'parentCommentId': ?parentId,
       });
       if (data['success'] == true) {
         _commentController.clear();

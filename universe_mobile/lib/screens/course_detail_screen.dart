@@ -276,6 +276,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final titleController = TextEditingController(text: pickedFile.name);
     String type = 'note';
 
+    if (!mounted) return;
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,

@@ -6,12 +6,17 @@ import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
+import '../models/profile_setup_data.dart';
 import '../services/session_service.dart';
 import 'bio_screen.dart';
 
-/// Step 6 of 12: Profile Photo (optional).
+/// Step 6 of 12: Profile Photo (optional). Avatar upload still happens
+/// immediately here (unlike username/bio/level, a photo isn't part of
+/// the "half-saved profile" risk the backend's complete-setup endpoint
+/// guards against, so there's no reason to defer it).
 class ProfilePhotoScreen extends StatefulWidget {
-  const ProfilePhotoScreen({super.key});
+  final ProfileSetupData setupData;
+  const ProfilePhotoScreen({super.key, required this.setupData});
 
   @override
   State<ProfilePhotoScreen> createState() => _ProfilePhotoScreenState();
@@ -72,7 +77,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
   void _goNext() {
     if (!mounted) return;
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const BioScreen()),
+      MaterialPageRoute(builder: (_) => BioScreen(setupData: widget.setupData)),
     );
   }
 

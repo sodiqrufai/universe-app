@@ -6,11 +6,17 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
 import '../widgets/step_progress_dots.dart';
+import '../models/profile_setup_data.dart';
 import 'department_selector_screen.dart';
 
 class FacultySelectorScreen extends StatefulWidget {
   final String universityId;
-  const FacultySelectorScreen({super.key, required this.universityId});
+  final ProfileSetupData setupData;
+  const FacultySelectorScreen({
+    super.key,
+    required this.universityId,
+    this.setupData = const ProfileSetupData(),
+  });
 
   @override
   State<FacultySelectorScreen> createState() => _FacultySelectorScreenState();
@@ -62,7 +68,9 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
       final data = await ApiService.patch('/profile/update', {'facultyId': facultyId});
       if (data['success'] == true && mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => DepartmentSelectorScreen(facultyId: facultyId)),
+          MaterialPageRoute(
+            builder: (_) => DepartmentSelectorScreen(facultyId: facultyId, setupData: widget.setupData),
+          ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

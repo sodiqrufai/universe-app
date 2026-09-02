@@ -1,58 +1,32 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
-import '../services/api_service.dart';
+import '../models/profile_setup_data.dart';
 import 'university_selector_screen.dart';
 
-/// Step 7 of 12: Bio (optional, 150 char cap).
+/// Step 7 of 12: Bio (optional, 150 char cap). Not saved yet — held as
+/// pending state and only written together with username + level via
+/// PATCH /profile/complete-setup at the end of the flow.
 class BioScreen extends StatefulWidget {
-  const BioScreen({super.key});
+  final ProfileSetupData setupData;
+  const BioScreen({super.key, required this.setupData});
 
   @override
   State<BioScreen> createState() => _BioScreenState();
 }
 
 class _BioScreenState extends State<BioScreen> {
-  final _bioController = TextEditingController();
-  bool _saving = false;
-  String? _error;
+  late final _bioController = TextEditingController(text: widget.setupData.bio);
 
   static const _maxLength = 150;
 
-  Future<void> _continue() async {
-    final bio = _bioController.text.trim();
-    if (bio.isEmpty) {
-      _goNext();
-      return;
-    }
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-    try {
-      final data = await ApiService.patch('/profile/update', {'bio': bio});
-      if (data['success'] == true) {
-        _goNext();
-      } else if (mounted) {
-        setState(() {
-          _error = data['error'] ?? 'Could not save bio';
-          _saving = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _error = 'Could not save bio — check your connection';
-          _saving = false;
-        });
-      }
-    }
-  }
-
-  void _goNext() {
-    if (!mounted) return;
+  void _continue() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const UniversitySelectorScreen()),
+      MaterialPageRoute(
+        builder: (_) => UniversitySelectorScreen(
+          setupData: widget.setupData.copyWith(bio: _bioController.text.trim()),
+        ),
+      ),
     );
   }
 
@@ -91,20 +65,9 @@ class _BioScreenState extends State<BioScreen> {
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(hintText: 'e.g. Computer Science, class of 2027'),
             ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
-              ),
             ElevatedButton(
-              onPressed: _saving ? null : _continue,
-              child: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(_bioController.text.trim().isEmpty ? 'Skip for now' : 'Continue'),
+              onPressed: _continue,
+              child: Text(_bioController.text.trim().isEmpty ? 'Skip for now' : 'Continue'),
             ),
           ],
         ),

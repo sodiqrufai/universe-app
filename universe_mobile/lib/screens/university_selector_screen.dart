@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
 import '../widgets/step_progress_dots.dart';
+import '../models/profile_setup_data.dart';
 import 'faculty_selector_screen.dart';
 
 class University {
@@ -27,7 +28,8 @@ class University {
 }
 
 class UniversitySelectorScreen extends StatefulWidget {
-  const UniversitySelectorScreen({super.key});
+  final ProfileSetupData setupData;
+  const UniversitySelectorScreen({super.key, this.setupData = const ProfileSetupData()});
 
   @override
   State<UniversitySelectorScreen> createState() =>
@@ -93,7 +95,9 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
       if (data['success'] == true) {
         if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => FacultySelectorScreen(universityId: u.id)),
+            MaterialPageRoute(
+              builder: (_) => FacultySelectorScreen(universityId: u.id, setupData: widget.setupData),
+            ),
           );
         }
       } else if (mounted) {
@@ -123,8 +127,6 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
             const SizedBox(height: AppSpacing.lg),
             TextField(
               onChanged: _search,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => FocusScope.of(context).unfocus(),
               decoration: const InputDecoration(
                 hintText: 'Search your university...',
                 prefixIcon: Icon(Icons.search),

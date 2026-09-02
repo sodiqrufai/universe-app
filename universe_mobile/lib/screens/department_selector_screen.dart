@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/state_views.dart';
 import '../widgets/step_progress_dots.dart';
+import '../models/profile_setup_data.dart';
 import 'level_selector_screen.dart';
 
 /// Step 10 of 12: Department. Level selection used to be a second phase
@@ -13,7 +14,12 @@ import 'level_selector_screen.dart';
 /// screen.dart) so each step in the sign-up flow gets its own dot.
 class DepartmentSelectorScreen extends StatefulWidget {
   final String facultyId;
-  const DepartmentSelectorScreen({super.key, required this.facultyId});
+  final ProfileSetupData setupData;
+  const DepartmentSelectorScreen({
+    super.key,
+    required this.facultyId,
+    this.setupData = const ProfileSetupData(),
+  });
 
   @override
   State<DepartmentSelectorScreen> createState() =>
@@ -67,7 +73,7 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
       final data = await ApiService.patch('/profile/update', {'departmentId': departmentId});
       if (data['success'] == true && mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const LevelSelectorScreen()),
+          MaterialPageRoute(builder: (_) => LevelSelectorScreen(setupData: widget.setupData)),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

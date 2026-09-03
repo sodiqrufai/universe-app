@@ -58,7 +58,7 @@ export class MarketplaceController {
       query = query.eq('university_id', profile.university_id);
     }
     if (categoryId) query = query.eq('category_id', categoryId);
-    if (search) query = query.ilike('title', `%${search}%`);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
     if (minPrice) query = query.gte('price', minPrice);
     if (maxPrice) query = query.lte('price', maxPrice);
 

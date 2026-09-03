@@ -27,6 +27,13 @@ class _FeedTabState extends State<FeedTab> {
   bool _loading = true;
   bool _hasError = false;
   final _storyKey = GlobalKey<StoryCarouselState>();
+  final _scrollController = ScrollController();
+
+  static const _pageSize = 20;
+  int _page = 1;
+  int _total = 0;
+  bool _loadingMore = false;
+  bool get _hasMore => _posts.length < _total;
 
   static const _tagColors = [
     AppColors.primary,
@@ -39,19 +46,60 @@ class _FeedTabState extends State<FeedTab> {
   void initState() {
     super.initState();
     _fetchAll();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent - 400) {
+      _loadMore();
+    }
+  }
+
+  String _feedPath({required int page}) {
+    final query = 'page=$page&pageSize=$_pageSize';
+    return _activeTag != null
+        ? '/posts/feed?tag=${Uri.encodeQueryComponent(_activeTag!)}&$query'
+        : '/posts/feed?$query';
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final nextPage = _page + 1;
+      final data = await ApiService.get(_feedPath(page: nextPage));
+      if (data['success'] == true) {
+        setState(() {
+          _posts = [..._posts, ...(data['posts'] ?? [])];
+          _page = nextPage;
+          _total = data['total'] ?? _total;
+          _loadingMore = false;
+        });
+      } else {
+        setState(() => _loadingMore = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
   Future<void> _fetchAll() async {
     setState(() {
       _loading = true;
       _hasError = false;
+      _page = 1;
     });
     try {
-      final feedPath = _activeTag != null
-          ? '/posts/feed?tag=${Uri.encodeQueryComponent(_activeTag!)}'
-          : '/posts/feed';
       final results = await Future.wait([
-        ApiService.get(feedPath),
+        ApiService.get(_feedPath(page: 1)),
         ApiService.get('/home'),
         ApiService.get('/posts/trending'),
       ]);
@@ -61,6 +109,7 @@ class _FeedTabState extends State<FeedTab> {
       if (postsData['success'] == true) {
         setState(() {
           _posts = postsData['posts'] ?? [];
+          _total = postsData['total'] ?? _posts.length;
           _announcements = homeData['announcements'] ?? [];
           _trending = trendingData['success'] == true ? (trendingData['trending'] ?? []) : [];
           _loading = false;
@@ -201,6 +250,7 @@ class _FeedTabState extends State<FeedTab> {
       },
       color: AppColors.primary,
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.only(top: 12, bottom: 90),
         children: [
           StoryCarousel(key: _storyKey),
@@ -231,6 +281,17 @@ class _FeedTabState extends State<FeedTab> {
                   )
                 else
                   ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),
+                if (_loadingMore)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

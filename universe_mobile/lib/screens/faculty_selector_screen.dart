@@ -12,10 +12,12 @@ import 'department_selector_screen.dart';
 class FacultySelectorScreen extends StatefulWidget {
   final String universityId;
   final ProfileSetupData setupData;
+  final bool editMode;
   const FacultySelectorScreen({
     super.key,
     required this.universityId,
     this.setupData = const ProfileSetupData(),
+    this.editMode = false,
   });
 
   @override
@@ -67,6 +69,13 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
     try {
       final data = await ApiService.patch('/profile/update', {'facultyId': facultyId});
       if (data['success'] == true && mounted) {
+        // NOTE: same caveat as UniversitySelectorScreen — department_id
+        // isn't reset here and can be left pointing at the previous
+        // faculty's hierarchy until Department is also re-picked.
+        if (widget.editMode) {
+          Navigator.of(context).pop(true);
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => DepartmentSelectorScreen(facultyId: facultyId, setupData: widget.setupData),
@@ -89,13 +98,14 @@ class _FacultySelectorScreenState extends State<FacultySelectorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Your Faculty')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit Faculty' : 'Select Your Faculty')),
       body: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: StepProgressDots(currentStep: 9, totalSteps: 12),
-          ),
+          if (!widget.editMode)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: StepProgressDots(currentStep: 9, totalSteps: 12),
+            ),
           Expanded(child: _buildBody()),
         ],
       ),

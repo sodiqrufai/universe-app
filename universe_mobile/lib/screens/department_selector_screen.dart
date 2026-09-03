@@ -15,10 +15,12 @@ import 'level_selector_screen.dart';
 class DepartmentSelectorScreen extends StatefulWidget {
   final String facultyId;
   final ProfileSetupData setupData;
+  final bool editMode;
   const DepartmentSelectorScreen({
     super.key,
     required this.facultyId,
     this.setupData = const ProfileSetupData(),
+    this.editMode = false,
   });
 
   @override
@@ -72,6 +74,10 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
     try {
       final data = await ApiService.patch('/profile/update', {'departmentId': departmentId});
       if (data['success'] == true && mounted) {
+        if (widget.editMode) {
+          Navigator.of(context).pop(true);
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => LevelSelectorScreen(setupData: widget.setupData)),
         );
@@ -92,13 +98,14 @@ class _DepartmentSelectorScreenState extends State<DepartmentSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Your Department')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit Department' : 'Select Your Department')),
       body: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: StepProgressDots(currentStep: 10, totalSteps: 12),
-          ),
+          if (!widget.editMode)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: StepProgressDots(currentStep: 10, totalSteps: 12),
+            ),
           Expanded(child: _buildBody()),
         ],
       ),

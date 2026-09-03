@@ -22,7 +22,12 @@ enum _CheckState { idle, checking, available, taken, formatError }
 /// for a username right here as a fallback, using the same live check.
 class LevelSelectorScreen extends StatefulWidget {
   final ProfileSetupData setupData;
-  const LevelSelectorScreen({super.key, this.setupData = const ProfileSetupData()});
+  final bool editMode;
+  const LevelSelectorScreen({
+    super.key,
+    this.setupData = const ProfileSetupData(),
+    this.editMode = false,
+  });
 
   @override
   State<LevelSelectorScreen> createState() => _LevelSelectorScreenState();
@@ -95,6 +100,10 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
         'level': level,
       });
       if (data['success'] == true && mounted) {
+        if (widget.editMode) {
+          Navigator.of(context).pop(true);
+          return;
+        }
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ReviewScreen()),
         );
@@ -142,13 +151,14 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Your Level')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit Level' : 'Select Your Level')),
       body: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            child: StepProgressDots(currentStep: 11, totalSteps: 12),
-          ),
+          if (!widget.editMode)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+              child: StepProgressDots(currentStep: 11, totalSteps: 12),
+            ),
           if (_needsUsername)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),

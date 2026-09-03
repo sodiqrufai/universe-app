@@ -58,7 +58,7 @@ export class EducationController {
       .order('created_at', { ascending: false });
 
     if (type) query = query.eq('resource_type', type);
-    if (search) query = query.ilike('title', `%${search}%`);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
 
     const { data, error } = await query;
     if (error) return { success: false, error: error.message };

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/sign_up_data.dart';
 import 'create_password_screen.dart';
@@ -14,10 +15,13 @@ enum _CheckState { idle, checking, available, taken, formatError }
 ///
 /// GET /auth/check-username now exists (unauthenticated, so it works
 /// before an account is created) — real live availability checking,
-/// debounced as the user types.
+/// debounced as the user types. Also reused as an edit entry point
+/// from ReviewScreen (editMode: true), saving via PATCH /profile/update
+/// and popping back instead of continuing to CreatePasswordScreen.
 class UsernameScreen extends StatefulWidget {
   final SignUpData data;
-  const UsernameScreen({super.key, required this.data});
+  final bool editMode;
+  const UsernameScreen({super.key, required this.data, this.editMode = false});
 
   @override
   State<UsernameScreen> createState() => _UsernameScreenState();
@@ -30,6 +34,17 @@ class _UsernameScreenState extends State<UsernameScreen> {
   Timer? _debounce;
 
   static final _usernameRegex = RegExp(r'^[a-zA-Z0-9_]{3,20}$');
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Edit mode opens with the already-saved, already-valid username —
+    // no reason to force a re-check before Continue is tappable.
+    if (widget.editMode && widget.data.username.isNotEmpty) {
+      _state = _CheckState.available;
+    }
+  }
 
   void _onChanged(String value) {
     _debounce?.cancel();
@@ -78,15 +93,34 @@ class _UsernameScreenState extends State<UsernameScreen> {
     }
   }
 
-  void _continue() {
+  Future<void> _continue() async {
     if (_state != _CheckState.available) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CreatePasswordScreen(
-          data: widget.data.copyWith(username: _usernameController.text.trim()),
+
+    if (!widget.editMode) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CreatePasswordScreen(
+            data: widget.data.copyWith(username: _usernameController.text.trim()),
+          ),
         ),
-      ),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final data = await ApiService.patch(
+      '/profile/update',
+      {'username': _usernameController.text.trim()},
     );
+    if (!mounted) return;
+    if (data['success'] == true) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _saving = false;
+        _formatMessage = data['error'] ?? 'Could not save your username';
+      });
+    }
   }
 
   Widget _buildStatusIcon() {
@@ -117,14 +151,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit Username' : 'Create Account')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 3, totalSteps: 12),
-            const SizedBox(height: 24),
+            if (!widget.editMode) ...[
+              const StepProgressDots(currentStep: 3, totalSteps: 12),
+              const SizedBox(height: 24),
+            ],
             const Text(
               'Choose a username',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -163,8 +199,14 @@ class _UsernameScreenState extends State<UsernameScreen> {
                 ),
               ),
             ElevatedButton(
-              onPressed: _state == _CheckState.available ? _continue : null,
-              child: const Text('Continue'),
+              onPressed: (_state == _CheckState.available && !_saving) ? _continue : null,
+              child: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Continue'),
             ),
           ],
         ),

@@ -32,6 +32,7 @@ export class EventsController {
   async getEvents(
     @Headers('authorization') authHeader: string,
     @Query('categoryId') categoryId?: string,
+    @Query('search') search?: string,
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -49,6 +50,7 @@ export class EventsController {
 
     if (profile?.university_id) query = query.eq('university_id', profile.university_id);
     if (categoryId) query = query.eq('category_id', categoryId);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
 
     const { data, error } = await query;
     if (error) return { success: false, error: error.message };

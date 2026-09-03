@@ -123,6 +123,7 @@ export class PostsController {
   async getFeed(
     @Headers('authorization') authHeader: string,
     @Query('tag') tag?: string,
+    @Query('search') search?: string,
     @Query('filter') filter?: string, // 'all' (default) | 'following' | 'university'
     @Query('page') page = '1',
     @Query('pageSize') pageSize = '20',
@@ -182,6 +183,7 @@ export class PostsController {
       query = query.eq('visibility', 'global');
     }
     if (tag) query = query.contains('tags', [tag]);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
 
     const { data, error, count } = await query;
 

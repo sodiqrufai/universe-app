@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'login_screen.dart';
@@ -57,7 +58,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
           children: [
             const Icon(
               Icons.warning_amber_rounded,
-              color: Colors.red,
+              color: AppColors.error,
               size: 48,
             ),
             const SizedBox(height: 16),
@@ -66,9 +67,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 24),
-            Text(
+            const Text(
               'Type DELETE to confirm',
-              style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -79,7 +80,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: canDelete && !_deleting ? _delete : null,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               child: _deleting
                   ? const SizedBox(
                       width: 20,

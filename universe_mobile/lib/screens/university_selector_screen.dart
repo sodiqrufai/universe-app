@@ -29,7 +29,12 @@ class University {
 
 class UniversitySelectorScreen extends StatefulWidget {
   final ProfileSetupData setupData;
-  const UniversitySelectorScreen({super.key, this.setupData = const ProfileSetupData()});
+  final bool editMode;
+  const UniversitySelectorScreen({
+    super.key,
+    this.setupData = const ProfileSetupData(),
+    this.editMode = false,
+  });
 
   @override
   State<UniversitySelectorScreen> createState() =>
@@ -93,13 +98,21 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
     try {
       final data = await ApiService.patch('/profile/update', {'universityId': u.id});
       if (data['success'] == true) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (_) => FacultySelectorScreen(universityId: u.id, setupData: widget.setupData),
-            ),
-          );
+        if (!mounted) return;
+        // NOTE: changing university here does not reset faculty_id/
+        // department_id on the backend — they can be left pointing at
+        // the previous university's hierarchy until Faculty/Department
+        // are also re-picked. Not resolved here; flagging rather than
+        // guessing at a cascade the backend doesn't explicitly support.
+        if (widget.editMode) {
+          Navigator.of(context).pop(true);
+          return;
         }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => FacultySelectorScreen(universityId: u.id, setupData: widget.setupData),
+          ),
+        );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['error'] ?? 'Failed to save university')),
@@ -117,14 +130,16 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Your University')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit University' : 'Select Your University')),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 8, totalSteps: 12),
-            const SizedBox(height: AppSpacing.lg),
+            if (!widget.editMode) ...[
+              const StepProgressDots(currentStep: 8, totalSteps: 12),
+              const SizedBox(height: AppSpacing.lg),
+            ],
             TextField(
               onChanged: _search,
               textInputAction: TextInputAction.search,

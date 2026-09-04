@@ -1,6 +1,6 @@
 import '../config/api_config.dart';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +18,8 @@ class VerificationScreen extends StatefulWidget {
 class _VerificationScreenState extends State<VerificationScreen> {
   final _fullNameController = TextEditingController();
   final _matricController = TextEditingController();
-  File? _document;
+  Uint8List? _documentBytes;
+  String? _documentName;
   bool _submitting = false;
   String? _error;
 
@@ -29,8 +30,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
       imageQuality: 85,
     );
     if (picked != null) {
+      final bytes = await picked.readAsBytes();
       setState(() {
-        _document = File(picked.path);
+        _documentBytes = bytes;
+        _documentName = picked.name;
       });
     }
   }
@@ -38,7 +41,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Future<void> _submit() async {
     if (_fullNameController.text.trim().isEmpty ||
         _matricController.text.trim().isEmpty ||
-        _document == null) {
+        _documentBytes == null) {
       setState(() {
         _error = 'Please fill in all fields and upload your student ID';
       });
@@ -73,7 +76,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
       request.fields['matricNumber'] = _matricController.text.trim();
       request.fields['universityId'] = universityId;
       request.files.add(
-        await http.MultipartFile.fromPath('file', _document!.path),
+        http.MultipartFile.fromBytes('file', _documentBytes!, filename: _documentName),
       );
 
       final streamedResponse = await request.send();
@@ -159,7 +162,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     color: AppColors.primary.withValues(alpha: 0.3),
                   ),
                 ),
-                child: _document == null
+                child: _documentBytes == null
                     ? const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -176,8 +179,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       )
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          _document!,
+                        child: Image.memory(
+                          _documentBytes!,
                           fit: BoxFit.cover,
                           width: double.infinity,
                         ),

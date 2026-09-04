@@ -1,6 +1,6 @@
 import '../../config/api_config.dart';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -21,7 +21,9 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
   List<dynamic> _categories = [];
   String? _selectedCategoryId;
   String _condition = 'good';
-  final List<File> _images = [];
+  // Each entry pairs the picked image's bytes with its filename, since
+  // there's no dart:io File to carry both on web.
+  final List<(Uint8List bytes, String name)> _images = [];
   bool _submitting = false;
   String? _error;
 
@@ -47,10 +49,12 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage(imageQuality: 80);
     if (picked.isNotEmpty) {
+      final toAdd = picked.take(6 - _images.length);
+      final withBytes = await Future.wait(
+        toAdd.map((x) async => (bytes: await x.readAsBytes(), name: x.name)),
+      );
       setState(() {
-        _images.addAll(
-          picked.take(6 - _images.length).map((x) => File(x.path)),
-        );
+        _images.addAll(withBytes.map((e) => (e.bytes, e.name)));
       });
     }
   }
@@ -85,7 +89,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
       }
       for (final image in _images) {
         request.files.add(
-          await http.MultipartFile.fromPath('images', image.path),
+          http.MultipartFile.fromBytes('images', image.$1, filename: image.$2),
         );
       }
 
@@ -157,8 +161,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                       padding: const EdgeInsets.only(right: 8),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          img,
+                        child: Image.memory(
+                          img.$1,
                           width: 90,
                           height: 90,
                           fit: BoxFit.cover,

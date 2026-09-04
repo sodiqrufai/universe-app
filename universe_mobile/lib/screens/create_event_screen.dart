@@ -1,6 +1,6 @@
 import '../../config/api_config.dart';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -21,7 +21,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   List<dynamic> _categories = [];
   String? _selectedCategoryId;
   DateTime? _startsAt;
-  File? _cover;
+  Uint8List? _coverBytes;
+  String? _coverName;
   bool _submitting = false;
   String? _error;
 
@@ -50,8 +51,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       imageQuality: 80,
     );
     if (picked != null) {
+      final bytes = await picked.readAsBytes();
       setState(() {
-        _cover = File(picked.path);
+        _coverBytes = bytes;
+        _coverName = picked.name;
       });
     }
   }
@@ -107,9 +110,9 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       if (_selectedCategoryId != null) {
         request.fields['categoryId'] = _selectedCategoryId!;
       }
-      if (_cover != null) {
+      if (_coverBytes != null) {
         request.files.add(
-          await http.MultipartFile.fromPath('cover', _cover!.path),
+          http.MultipartFile.fromBytes('cover', _coverBytes!, filename: _coverName),
         );
       }
 
@@ -179,7 +182,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: _cover == null
+                child: _coverBytes == null
                     ? const Center(
                         child: Icon(
                           Icons.add_photo_alternate_outlined,
@@ -189,8 +192,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                       )
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          _cover!,
+                        child: Image.memory(
+                          _coverBytes!,
                           fit: BoxFit.cover,
                           width: double.infinity,
                         ),

@@ -1,6 +1,6 @@
 import '../config/api_config.dart';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -26,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _error;
   String? _universityName;
   String? _avatarUrl;
-  File? _pickedImage;
+  Uint8List? _pickedImageBytes;
 
   @override
   void initState() {
@@ -69,8 +69,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     if (picked == null) return;
 
+    final bytes = await picked.readAsBytes();
     setState(() {
-      _pickedImage = File(picked.path);
+      _pickedImageBytes = bytes;
       _uploadingPhoto = true;
     });
 
@@ -81,7 +82,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Uri.parse('${ApiConfig.baseUrl}/profile/avatar'),
       );
       request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(await http.MultipartFile.fromPath('file', picked.path));
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: picked.name));
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
@@ -163,7 +164,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   ImageProvider? _avatarImage() {
-    if (_pickedImage != null) return FileImage(_pickedImage!);
+    if (_pickedImageBytes != null) return MemoryImage(_pickedImageBytes!);
     if (_avatarUrl != null) return NetworkImage(_avatarUrl!);
     return null;
   }

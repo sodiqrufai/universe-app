@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -268,11 +267,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Future<void> _uploadResource() async {
-    final files = await FilePicker.pickFiles();
-    if (files.isEmpty || files.first.path == null) return;
-    final pickedFile = files.first;
+    // withData: true makes file_picker populate .bytes on every platform,
+    // not just web -- this is what lets the upload below work from memory
+    // instead of needing a dart:io File/path, which doesn't exist on web.
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    if (result == null || result.files.isEmpty) return;
+    final pickedFile = result.files.first;
+    final fileBytes = pickedFile.bytes;
+    if (fileBytes == null) return;
 
-    final file = File(pickedFile.path!);
     final titleController = TextEditingController(text: pickedFile.name);
     String type = 'note';
 
@@ -339,7 +342,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       request.headers['Authorization'] = 'Bearer $token';
       request.fields['title'] = titleController.text.trim();
       request.fields['resourceType'] = type;
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: pickedFile.name),
+      );
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);

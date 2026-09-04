@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +18,8 @@ class CreatePostScreen extends StatefulWidget {
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _contentController = TextEditingController();
   final _tagController = TextEditingController();
-  File? _image;
+  Uint8List? _imageBytes;
+  String? _imageName;
   String _visibility = 'university';
   bool _posting = false;
   String? _error;
@@ -43,8 +44,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       imageQuality: 80,
     );
     if (picked != null) {
+      final bytes = await picked.readAsBytes();
       setState(() {
-        _image = File(picked.path);
+        _imageBytes = bytes;
+        _imageName = picked.name;
       });
     }
   }
@@ -72,9 +75,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       request.fields['content'] = _contentController.text.trim();
       request.fields['visibility'] = _visibility;
       if (_tags.isNotEmpty) request.fields['tags'] = _tags.join(',');
-      if (_image != null) {
+      if (_imageBytes != null) {
         request.files.add(
-          await http.MultipartFile.fromPath('file', _image!.path),
+          http.MultipartFile.fromBytes('file', _imageBytes!, filename: _imageName),
         );
       }
 
@@ -148,11 +151,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 border: InputBorder.none,
               ),
             ),
-            if (_image != null) ...[
+            if (_imageBytes != null) ...[
               const SizedBox(height: AppSpacing.md),
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.card),
-                child: Image.file(_image!, height: 200, fit: BoxFit.cover),
+                child: Image.memory(_imageBytes!, height: 200, fit: BoxFit.cover),
               ),
             ],
             const SizedBox(height: AppSpacing.lg),

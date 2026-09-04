@@ -86,7 +86,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         strokeWidth: 2,
                       ),
                     )

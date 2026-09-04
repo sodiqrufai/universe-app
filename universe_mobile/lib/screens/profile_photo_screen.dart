@@ -13,10 +13,13 @@ import 'bio_screen.dart';
 /// Step 6 of 12: Profile Photo (optional). Avatar upload still happens
 /// immediately here (unlike username/bio/level, a photo isn't part of
 /// the "half-saved profile" risk the backend's complete-setup endpoint
-/// guards against, so there's no reason to defer it).
+/// guards against, so there's no reason to defer it). Also reused as
+/// an edit entry point from ReviewScreen (editMode: true), popping
+/// back instead of continuing to BioScreen.
 class ProfilePhotoScreen extends StatefulWidget {
   final ProfileSetupData setupData;
-  const ProfilePhotoScreen({super.key, required this.setupData});
+  final bool editMode;
+  const ProfilePhotoScreen({super.key, required this.setupData, this.editMode = false});
 
   @override
   State<ProfilePhotoScreen> createState() => _ProfilePhotoScreenState();
@@ -81,6 +84,10 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
 
   void _goNext() {
     if (!mounted) return;
+    if (widget.editMode) {
+      Navigator.of(context).pop(true);
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => BioScreen(setupData: widget.setupData)),
     );
@@ -89,14 +96,16 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account')),
+      appBar: AppBar(title: Text(widget.editMode ? 'Edit Photo' : 'Create Account')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const StepProgressDots(currentStep: 6, totalSteps: 12),
-            const SizedBox(height: 24),
+            if (!widget.editMode) ...[
+              const StepProgressDots(currentStep: 6, totalSteps: 12),
+              const SizedBox(height: 24),
+            ],
             const Text(
               'Add a profile photo',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -150,7 +159,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : Text(_imageBytes != null ? 'Continue' : 'Skip for now'),
+                  : Text(_imageBytes != null ? 'Continue' : (widget.editMode ? 'Back' : 'Skip for now')),
             ),
           ],
         ),

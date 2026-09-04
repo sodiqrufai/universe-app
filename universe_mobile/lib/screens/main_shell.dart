@@ -8,6 +8,7 @@ import 'tabs/anonymous_tab.dart';
 import 'tabs/profile_tab.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
+import 'search_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -59,6 +60,15 @@ class _MainShellState extends State<MainShell> {
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SearchScreen()),
+              );
+            },
+          ),
           if (_currentIndex == 4)
             IconButton(
               icon: const Icon(Icons.settings_outlined),

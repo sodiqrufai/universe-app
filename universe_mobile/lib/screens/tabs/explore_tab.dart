@@ -47,11 +47,43 @@ class _ExploreTabState extends State<ExploreTab> {
   bool _loading = true;
   bool _partialFailure = false;
   bool _totalFailure = false;
+  final _scrollController = ScrollController();
+
+  // None of Education/Events/Services/Marketplace support server-side
+  // pagination yet (checked all 4 controllers directly) — everything
+  // is fetched in one shot on _fetchAll(). This reveals it into the
+  // grid in chunks as the user scrolls instead of building every cell
+  // at once, so a large combined result set still scrolls smoothly.
+  // When those endpoints do get real pagination, swap _loadMoreLocal's
+  // local-slice step for an actual page fetch — the scroll-listener
+  // and footer plumbing stay the same.
+  static const _chunkSize = 20;
+  int _visibleCount = _chunkSize;
 
   @override
   void initState() {
     super.initState();
     _fetchAll();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent - 400) {
+      _revealMore();
+    }
+  }
+
+  void _revealMore() {
+    if (_visibleCount >= _filteredItems.length) return;
+    setState(() => _visibleCount = (_visibleCount + _chunkSize).clamp(0, _filteredItems.length));
   }
 
   Future<void> _fetchAll() async {
@@ -59,6 +91,7 @@ class _ExploreTabState extends State<ExploreTab> {
       _loading = true;
       _partialFailure = false;
       _totalFailure = false;
+      _visibleCount = _chunkSize;
     });
 
     final results = await Future.wait([
@@ -318,19 +351,21 @@ class _ExploreTabState extends State<ExploreTab> {
         ),
       );
     }
+    final visibleItems = items.take(_visibleCount).toList();
     return RefreshIndicator(
       onRefresh: _fetchAll,
       color: AppColors.primary,
       child: GridView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-        itemCount: items.length,
+        itemCount: visibleItems.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
           childAspectRatio: 0.72,
         ),
-        itemBuilder: (context, i) => _buildCard(items[i]),
+        itemBuilder: (context, i) => _buildCard(visibleItems[i]),
       ),
     );
   }
@@ -384,7 +419,10 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
             label: Text(label),
             selected: selected,
-            onSelected: (_) => setState(() => _filter = type),
+            onSelected: (_) => setState(() {
+              _filter = type;
+              _visibleCount = _chunkSize;
+            }),
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.lightPurple,
             labelStyle: TextStyle(

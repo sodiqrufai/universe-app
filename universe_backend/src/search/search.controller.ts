@@ -67,6 +67,8 @@ export class SearchController {
     const filteredPosts = posts.filter((p: any) => !blockedIds.has(p.author_id));
     const filteredListings = listings.filter((l: any) => !blockedIds.has(l.seller_id));
     const filteredServices = services.filter((s: any) => !blockedIds.has(s.provider_id));
+    const filteredEvents = events.filter((e: any) => !blockedIds.has(e.organizer_id));
+    const filteredResources = resources.filter((r: any) => !blockedIds.has(r.uploader_id));
 
     const paginate = (arr: any[]) => arr.slice(from, to + 1);
 
@@ -76,8 +78,8 @@ export class SearchController {
         posts: { items: paginate(filteredPosts), total: filteredPosts.length },
         listings: { items: paginate(filteredListings), total: filteredListings.length },
         services: { items: paginate(filteredServices), total: filteredServices.length },
-        events: { items: paginate(events), total: events.length },
-        resources: { items: paginate(resources), total: resources.length },
+        events: { items: paginate(filteredEvents), total: filteredEvents.length },
+        resources: { items: paginate(filteredResources), total: filteredResources.length },
       },
       page: pageNum,
       pageSize: size,

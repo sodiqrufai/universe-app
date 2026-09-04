@@ -76,6 +76,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final changed = await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => screen),
     );
+    if (!mounted) return;
     if (changed == true) _fetchProfile();
   }
 

@@ -33,6 +33,8 @@ export class ServicesController {
     @Headers('authorization') authHeader: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '10',
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -42,19 +44,28 @@ export class ServicesController {
       .eq('id', user.id)
       .single();
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(20, Math.max(1, parseInt(pageSize, 10) || 10));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
+
     let query = this.supabase.client
       .from('services')
-      .select('*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)')
+      .select(
+        '*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)',
+        { count: 'exact' },
+      )
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
     if (profile?.university_id) query = query.eq('university_id', profile.university_id);
     if (categoryId) query = query.eq('category_id', categoryId);
     if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
+    query = query.range(from, to);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) return { success: false, error: error.message };
-    return { success: true, services: data };
+    return { success: true, items: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
   }
 
   @Get('listings/:id')

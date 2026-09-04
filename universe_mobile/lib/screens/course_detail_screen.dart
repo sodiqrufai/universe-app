@@ -267,14 +267,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   }
 
   Future<void> _uploadResource() async {
-    // withData: true makes file_picker populate .bytes on every platform,
-    // not just web -- this is what lets the upload below work from memory
-    // instead of needing a dart:io File/path, which doesn't exist on web.
-    final result = await FilePicker.platform.pickFiles(withData: true);
-    if (result == null || result.files.isEmpty) return;
-    final pickedFile = result.files.first;
-    final fileBytes = pickedFile.bytes;
-    if (fileBytes == null) return;
+    // file_picker v12 dropped FilePicker.platform and the withData flag
+    // entirely -- pickFiles() is now a direct static call returning
+    // List<PlatformFile>, and reading bytes is done via the file's own
+    // readAsBytes() instead of a pre-population flag.
+    final files = await FilePicker.pickFiles();
+    if (files.isEmpty) return;
+    final pickedFile = files.first;
+    final fileBytes = await pickedFile.readAsBytes();
 
     final titleController = TextEditingController(text: pickedFile.name);
     String type = 'note';

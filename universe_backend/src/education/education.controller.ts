@@ -48,21 +48,29 @@ export class EducationController {
     @Param('id') courseId: string,
     @Query('type') type?: string,
     @Query('search') search?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '10',
   ) {
     await this.getUserFromToken(authHeader);
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(20, Math.max(1, parseInt(pageSize, 10) || 10));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
+
     let query = this.supabase.client
       .from('resources')
-      .select('*, profiles(full_name, username)')
+      .select('*, profiles(full_name, username)', { count: 'exact' })
       .eq('course_id', courseId)
       .order('created_at', { ascending: false });
 
     if (type) query = query.eq('resource_type', type);
     if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
+    query = query.range(from, to);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) return { success: false, error: error.message };
-    return { success: true, resources: data };
+    return { success: true, items: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
   }
 
   @Post('courses/:id/resources')

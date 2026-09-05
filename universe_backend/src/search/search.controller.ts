@@ -17,6 +17,14 @@ export class SearchController {
     return data.user;
   }
 
+  // Formats a set of UUIDs for a PostgREST "not.in.(...)" filter. Returns null
+  // if there's nothing to exclude, so callers can skip the filter entirely --
+  // "not.in.()" with an empty list is invalid PostgREST syntax.
+  private notInList(ids: Set<string>): string | null {
+    if (ids.size === 0) return null;
+    return `(${Array.from(ids).join(',')})`;
+  }
+
   @Get()
   async search(
     @Headers('authorization') authHeader: string,
@@ -66,33 +74,14 @@ export class SearchController {
 
     return {
       success: true,
-      results: {
-        posts,
-        listings,
-        services,
-        events,
-        resources,
-      },
+      results: { posts, listings, services, events, resources },
       page: pageNum,
       pageSize: size,
     };
   }
 
-  /**
-   * Applies the blocked-users exclusion in SQL rather than in JS. Only
-   * called with a non-empty set -- .not(col, 'in', '()') on an empty list
-   * is invalid PostgREST syntax, so callers must guard for that (each
-   * search method below does this via the `blockedIds.size > 0` check).
-   */
-  private excludeBlocked(q: any, column: string, blockedIds: Set<string>) {
-    if (blockedIds.size > 0) {
-      return q.not(column, 'in', `(${[...blockedIds].join(',')})`);
-    }
-    return q;
-  }
-
   private async searchPosts(
-    query: string,
+    searchQuery: string,
     universityId: string | null,
     blockedIds: Set<string>,
     from: number,
@@ -103,128 +92,125 @@ export class SearchController {
       .select('*, profiles(full_name, username, avatar_url, is_verified)', { count: 'exact' })
       .eq('type', 'post')
       .eq('is_removed', false)
-      .textSearch('search_vector', query, { type: 'websearch', config: 'english' })
-      .order('created_at', { ascending: false });
+      .textSearch('search_vector', searchQuery, { type: 'websearch', config: 'english' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (universityId) {
       q = q.or(`visibility.eq.global,and(visibility.eq.university,university_id.eq.${universityId})`);
     } else {
       q = q.eq('visibility', 'global');
     }
-    q = this.excludeBlocked(q, 'author_id', blockedIds);
-    q = q.range(from, to);
+
+    const excluded = this.notInList(blockedIds);
+    if (excluded) q = q.not('author_id', 'in', excluded);
 
     const { data, error, count } = await q;
     if (error) {
       console.error('Search posts error:', error);
       return { items: [], total: 0 };
     }
-    return {
-      items: (data ?? []).map((p: any) => ({ ...p, resultType: 'post' })),
-      total: count ?? 0,
-    };
+    return { items: (data ?? []).map((p: any) => ({ ...p, resultType: 'post' })), total: count ?? 0 };
   }
 
   private async searchListings(
-    query: string,
+    searchQuery: string,
     universityId: string | null,
     blockedIds: Set<string>,
     from: number,
     to: number,
   ) {
+    // Fail safe: listings have no "global" visibility concept, so a profile
+    // with no university must never fall through to an unscoped query.
+    if (!universityId) return { items: [], total: 0 };
+
     let q = this.supabase.client
       .from('listings')
-      .select(
-        '*, profiles(full_name, username, avatar_url), listing_images(image_url, sort_order)',
-        { count: 'exact' },
-      )
+      .select('*, profiles(full_name, username, avatar_url), listing_images(image_url, sort_order)', { count: 'exact' })
       .eq('status', 'active')
-      .textSearch('search_vector', query, { type: 'websearch', config: 'english' })
-      .order('created_at', { ascending: false });
+      .eq('university_id', universityId)
+      .textSearch('search_vector', searchQuery, { type: 'websearch', config: 'english' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-    if (universityId) q = q.eq('university_id', universityId);
-    q = this.excludeBlocked(q, 'seller_id', blockedIds);
-    q = q.range(from, to);
+    const excluded = this.notInList(blockedIds);
+    if (excluded) q = q.not('seller_id', 'in', excluded);
 
     const { data, error, count } = await q;
     if (error) {
       console.error('Search listings error:', error);
       return { items: [], total: 0 };
     }
-    return {
-      items: (data ?? []).map((l: any) => ({ ...l, resultType: 'listing' })),
-      total: count ?? 0,
-    };
+    return { items: (data ?? []).map((l: any) => ({ ...l, resultType: 'listing' })), total: count ?? 0 };
   }
 
   private async searchServices(
-    query: string,
+    searchQuery: string,
     universityId: string | null,
     blockedIds: Set<string>,
     from: number,
     to: number,
   ) {
+    if (!universityId) return { items: [], total: 0 };
+
     let q = this.supabase.client
       .from('services')
-      .select(
-        '*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)',
-        { count: 'exact' },
-      )
+      .select('*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)', { count: 'exact' })
       .eq('status', 'active')
-      .textSearch('search_vector', query, { type: 'websearch', config: 'english' })
-      .order('created_at', { ascending: false });
+      .eq('university_id', universityId)
+      .textSearch('search_vector', searchQuery, { type: 'websearch', config: 'english' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-    if (universityId) q = q.eq('university_id', universityId);
-    q = this.excludeBlocked(q, 'provider_id', blockedIds);
-    q = q.range(from, to);
+    const excluded = this.notInList(blockedIds);
+    if (excluded) q = q.not('provider_id', 'in', excluded);
 
     const { data, error, count } = await q;
     if (error) {
       console.error('Search services error:', error);
       return { items: [], total: 0 };
     }
-    return {
-      items: (data ?? []).map((s: any) => ({ ...s, resultType: 'service' })),
-      total: count ?? 0,
-    };
+    return { items: (data ?? []).map((s: any) => ({ ...s, resultType: 'service' })), total: count ?? 0 };
   }
 
   private async searchEvents(
-    query: string,
+    searchQuery: string,
     universityId: string | null,
     blockedIds: Set<string>,
     from: number,
     to: number,
   ) {
+    if (!universityId) return { items: [], total: 0 };
+
     let q = this.supabase.client
       .from('events')
       .select('*, profiles(full_name, username, avatar_url)', { count: 'exact' })
       .eq('status', 'active')
-      .textSearch('search_vector', query, { type: 'websearch', config: 'english' })
-      .order('starts_at', { ascending: true });
+      .eq('university_id', universityId)
+      .textSearch('search_vector', searchQuery, { type: 'websearch', config: 'english' })
+      .order('starts_at', { ascending: true })
+      .range(from, to);
 
-    if (universityId) q = q.eq('university_id', universityId);
-    q = this.excludeBlocked(q, 'organizer_id', blockedIds);
-    q = q.range(from, to);
+    const excluded = this.notInList(blockedIds);
+    if (excluded) q = q.not('organizer_id', 'in', excluded);
 
     const { data, error, count } = await q;
     if (error) {
       console.error('Search events error:', error);
       return { items: [], total: 0 };
     }
-    return {
-      items: (data ?? []).map((e: any) => ({ ...e, resultType: 'event' })),
-      total: count ?? 0,
-    };
+    return { items: (data ?? []).map((e: any) => ({ ...e, resultType: 'event' })), total: count ?? 0 };
   }
 
   private async searchResources(
-    query: string,
+    searchQuery: string,
     universityId: string | null,
     blockedIds: Set<string>,
     from: number,
     to: number,
   ) {
+    if (!universityId) return { items: [], total: 0 };
+
     // Scoped via courses -> departments -> faculties -> university_id since
     // resources has no direct university_id column of its own.
     let q = this.supabase.client
@@ -233,23 +219,19 @@ export class SearchController {
         '*, profiles(full_name, username), courses!inner(name, departments!inner(name, faculties!inner(name, university_id)))',
         { count: 'exact' },
       )
-      .textSearch('search_vector', query, { type: 'websearch', config: 'english' })
-      .order('created_at', { ascending: false });
+      .eq('courses.departments.faculties.university_id', universityId)
+      .textSearch('search_vector', searchQuery, { type: 'websearch', config: 'english' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-    if (universityId) {
-      q = q.eq('courses.departments.faculties.university_id', universityId);
-    }
-    q = this.excludeBlocked(q, 'uploader_id', blockedIds);
-    q = q.range(from, to);
+    const excluded = this.notInList(blockedIds);
+    if (excluded) q = q.not('uploader_id', 'in', excluded);
 
     const { data, error, count } = await q;
     if (error) {
       console.error('Search resources error:', error);
       return { items: [], total: 0 };
     }
-    return {
-      items: (data ?? []).map((r: any) => ({ ...r, resultType: 'resource' })),
-      total: count ?? 0,
-    };
+    return { items: (data ?? []).map((r: any) => ({ ...r, resultType: 'resource' })), total: count ?? 0 };
   }
 }

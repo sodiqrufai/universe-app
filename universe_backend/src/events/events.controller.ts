@@ -33,8 +33,6 @@ export class EventsController {
     @Headers('authorization') authHeader: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
-    @Query('page') page = '1',
-    @Query('pageSize') pageSize = '10',
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -44,34 +42,40 @@ export class EventsController {
       .eq('id', user.id)
       .single();
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const size = Math.min(20, Math.max(1, parseInt(pageSize, 10) || 10));
-    const from = (pageNum - 1) * size;
-    const to = from + size - 1;
+    if (!profile?.university_id) {
+      return { success: true, events: [] };
+    }
 
     let query = this.supabase.client
       .from('events')
-      .select('*, profiles(full_name, username, avatar_url), event_rsvps(user_id, status)', {
-        count: 'exact',
-      })
+      .select('*, profiles(full_name, username, avatar_url), event_rsvps(user_id, status)')
       .eq('status', 'active')
-      .order('starts_at', { ascending: true });
+      .order('starts_at', { ascending: true })
+      .eq('university_id', profile.university_id);
 
-    if (profile?.university_id) query = query.eq('university_id', profile.university_id);
     if (categoryId) query = query.eq('category_id', categoryId);
     if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
-    query = query.range(from, to);
 
-    const { data, error, count } = await query;
+    const { data, error } = await query;
     if (error) return { success: false, error: error.message };
 
-    const enriched = (data ?? []).map((e: any) => {
+    const { data: blocks } = await this.supabase.client
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
+
+    const blockedOrganizerIds = new Set(
+      (blocks ?? []).map((b) => (b.blocker_id === user.id ? b.blocked_id : b.blocker_id)),
+    );
+    const visibleEvents = (data ?? []).filter((e: any) => !blockedOrganizerIds.has(e.organizer_id));
+
+    const enriched = visibleEvents.map((e: any) => {
       const goingCount = e.event_rsvps?.filter((r: any) => r.status === 'going').length ?? 0;
       const myRsvp = e.event_rsvps?.find((r: any) => r.user_id === user.id)?.status ?? null;
       return { ...e, goingCount, myRsvp };
     });
 
-    return { success: true, items: enriched, total: count ?? 0, page: pageNum, pageSize: size };
+    return { success: true, events: enriched };
   }
 
   @Get('mine')

@@ -49,16 +49,30 @@ class _ExploreTabState extends State<ExploreTab> {
   bool _totalFailure = false;
   final _scrollController = ScrollController();
 
-  // None of Education/Events/Services/Marketplace support server-side
-  // pagination yet (checked all 4 controllers directly) — everything
-  // is fetched in one shot on _fetchAll(). This reveals it into the
-  // grid in chunks as the user scrolls instead of building every cell
-  // at once, so a large combined result set still scrolls smoothly.
-  // When those endpoints do get real pagination, swap _loadMoreLocal's
-  // local-slice step for an actual page fetch — the scroll-listener
-  // and footer plumbing stay the same.
-  static const _chunkSize = 20;
-  int _visibleCount = _chunkSize;
+  // Education/courses has no server-side pagination yet — fetched
+  // once, in full, only in _fetchAll. Events/Services/Marketplace all
+  // added real page/pageSize pagination — _loadMore() advances a
+  // shared page number and fetches the next page of each of those 3
+  // in parallel, appending into the merged grid.
+  static const _pageSize = 20;
+  int _page = 1;
+  bool _loadingMore = false;
+  final Map<_ExploreType, int> _totals = {};
+
+  static const _paginatedTypes = [
+    _ExploreType.event,
+    _ExploreType.service,
+    _ExploreType.marketplace,
+  ];
+
+  int _loadedCountFor(_ExploreType type) => _items.where((i) => i.type == type).length;
+
+  bool get _hasMore {
+    for (final type in _paginatedTypes) {
+      if (_loadedCountFor(type) < (_totals[type] ?? 0)) return true;
+    }
+    return false;
+  }
 
   @override
   void initState() {
@@ -77,13 +91,34 @@ class _ExploreTabState extends State<ExploreTab> {
   void _onScroll() {
     if (_scrollController.position.pixels >
         _scrollController.position.maxScrollExtent - 400) {
-      _revealMore();
+      _loadMore();
     }
   }
 
-  void _revealMore() {
-    if (_visibleCount >= _filteredItems.length) return;
-    setState(() => _visibleCount = (_visibleCount + _chunkSize).clamp(0, _filteredItems.length));
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    final nextPage = _page + 1;
+    final eventsResult = await _fetchEvents(page: nextPage);
+    final servicesResult = await _fetchServices(page: nextPage);
+    final marketResult = await _fetchMarketplace(page: nextPage);
+    if (!mounted) return;
+    setState(() {
+      if (eventsResult.items != null) {
+        _items.addAll(eventsResult.items!);
+        _totals[_ExploreType.event] = eventsResult.total;
+      }
+      if (servicesResult.items != null) {
+        _items.addAll(servicesResult.items!);
+        _totals[_ExploreType.service] = servicesResult.total;
+      }
+      if (marketResult.items != null) {
+        _items.addAll(marketResult.items!);
+        _totals[_ExploreType.marketplace] = marketResult.total;
+      }
+      _page = nextPage;
+      _loadingMore = false;
+    });
   }
 
   Future<void> _fetchAll() async {
@@ -91,32 +126,48 @@ class _ExploreTabState extends State<ExploreTab> {
       _loading = true;
       _partialFailure = false;
       _totalFailure = false;
-      _visibleCount = _chunkSize;
+      _page = 1;
     });
 
-    final results = await Future.wait([
-      _fetchEducation(),
-      _fetchEvents(),
-      _fetchServices(),
-      _fetchMarketplace(),
-    ]);
+    final eduFuture = _fetchEducation();
+    final eventsFuture = _fetchEvents(page: 1);
+    final servicesFuture = _fetchServices(page: 1);
+    final marketFuture = _fetchMarketplace(page: 1);
+
+    final eduResult = await eduFuture;
+    final eventsResult = await eventsFuture;
+    final servicesResult = await servicesFuture;
+    final marketResult = await marketFuture;
 
     final items = <_ExploreItem>[];
     var failures = 0;
-    for (final r in results) {
-      if (r == null) {
+    var total = 0;
+
+    if (eduResult == null) {
+      failures++;
+    } else {
+      items.addAll(eduResult);
+    }
+    total++;
+
+    for (final r in [eventsResult, servicesResult, marketResult]) {
+      total++;
+      if (r.items == null) {
         failures++;
       } else {
-        items.addAll(r);
+        items.addAll(r.items!);
       }
     }
 
     if (!mounted) return;
     setState(() {
       _items = items;
+      _totals[_ExploreType.event] = eventsResult.total;
+      _totals[_ExploreType.service] = servicesResult.total;
+      _totals[_ExploreType.marketplace] = marketResult.total;
       _loading = false;
-      _totalFailure = failures == results.length;
-      _partialFailure = failures > 0 && failures < results.length;
+      _totalFailure = failures == total;
+      _partialFailure = failures > 0 && failures < total;
     });
   }
 
@@ -142,12 +193,12 @@ class _ExploreTabState extends State<ExploreTab> {
     }
   }
 
-  Future<List<_ExploreItem>?> _fetchEvents() async {
+  Future<({List<_ExploreItem>? items, int total})> _fetchEvents({int page = 1}) async {
     try {
-      final data = await ApiService.get('/events');
-      if (data['success'] != true) return null;
-      final events = data['events'] as List<dynamic>? ?? [];
-      return events
+      final data = await ApiService.get('/events?page=$page&pageSize=$_pageSize');
+      if (data['success'] != true) return (items: null, total: 0);
+      final events = data['items'] as List<dynamic>? ?? [];
+      final mapped = events
           .map(
             (e) => _ExploreItem(
               type: _ExploreType.event,
@@ -159,17 +210,23 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
           )
           .toList();
+      return (items: mapped, total: data['total'] as int? ?? mapped.length);
     } catch (_) {
-      return null;
+      return (items: null, total: 0);
     }
   }
 
-  Future<List<_ExploreItem>?> _fetchServices() async {
+  Future<({List<_ExploreItem>? items, int total})> _fetchServices({int page = 1}) async {
     try {
-      final data = await ApiService.get('/services/listings');
-      if (data['success'] != true) return null;
-      final services = data['listings'] as List<dynamic>? ?? [];
-      return services.map((s) {
+      final data = await ApiService.get('/services/listings?page=$page&pageSize=$_pageSize');
+      if (data['success'] != true) return (items: null, total: 0);
+      // Was reading `listings` here, but the backend's key for this
+      // endpoint was always `services` (now `items` post-pagination) —
+      // a pre-existing mismatch independent of the recent backend
+      // change, meaning Services in Explore was likely silently empty
+      // before this too.
+      final services = data['items'] as List<dynamic>? ?? [];
+      final mapped = services.map((s) {
         final images = s['service_images'] as List<dynamic>? ?? [];
         final priceLabel = s['price'] != null
             ? '₦${s['price']}${s['price_type'] == 'hourly' ? '/hr' : ''}'
@@ -183,17 +240,22 @@ class _ExploreTabState extends State<ExploreTab> {
           raw: s,
         );
       }).toList();
+      return (items: mapped, total: data['total'] as int? ?? mapped.length);
     } catch (_) {
-      return null;
+      return (items: null, total: 0);
     }
   }
 
-  Future<List<_ExploreItem>?> _fetchMarketplace() async {
+  Future<({List<_ExploreItem>? items, int total})> _fetchMarketplace({int page = 1}) async {
     try {
-      final data = await ApiService.get('/marketplace/listings');
-      if (data['success'] != true) return null;
-      final listings = data['listings'] as List<dynamic>? ?? [];
-      return listings.map((l) {
+      final data = await ApiService.get('/marketplace/listings?page=$page&pageSize=$_pageSize');
+      if (data['success'] != true) return (items: null, total: 0);
+      // Backend added pagination + SQL-level blocked-user filtering
+      // here recently and renamed this key from `listings` to `items`
+      // in the same change.
+      final listings = data['items'] as List<dynamic>? ?? [];
+      return (
+        items: listings.map((l) {
         final images = l['listing_images'] as List<dynamic>? ?? [];
         return _ExploreItem(
           type: _ExploreType.marketplace,
@@ -203,9 +265,11 @@ class _ExploreTabState extends State<ExploreTab> {
           imageUrl: images.isNotEmpty ? images.first['image_url'] : null,
           raw: l,
         );
-      }).toList();
+      }).toList(),
+        total: data['total'] as int? ?? 0,
+      );
     } catch (_) {
-      return null;
+      return (items: null, total: 0);
     }
   }
 
@@ -351,21 +415,42 @@ class _ExploreTabState extends State<ExploreTab> {
         ),
       );
     }
-    final visibleItems = items.take(_visibleCount).toList();
     return RefreshIndicator(
       onRefresh: _fetchAll,
       color: AppColors.primary,
-      child: GridView.builder(
+      child: CustomScrollView(
         controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-        itemCount: visibleItems.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.72,
-        ),
-        itemBuilder: (context, i) => _buildCard(visibleItems[i]),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 0.72,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _buildCard(items[i]),
+                childCount: items.length,
+              ),
+            ),
+          ),
+          if (_loadingMore)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 70)),
+        ],
       ),
     );
   }
@@ -419,10 +504,7 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
             label: Text(label),
             selected: selected,
-            onSelected: (_) => setState(() {
-              _filter = type;
-              _visibleCount = _chunkSize;
-            }),
+            onSelected: (_) => setState(() => _filter = type),
             selectedColor: AppColors.primary,
             backgroundColor: AppColors.lightPurple,
             labelStyle: TextStyle(

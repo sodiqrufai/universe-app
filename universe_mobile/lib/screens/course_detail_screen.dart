@@ -101,7 +101,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         '/education/courses/${widget.course['id']}/resources$query',
       );
       setState(() {
-        _resources = data['resources'] ?? [];
+        // Backend renamed this response key from `resources` to `items`
+        // (and added page/pageSize/total) when it added pagination here
+        // — was silently returning an empty list until this matched.
+        _resources = data['items'] ?? [];
         _loadingResources = false;
       });
     } catch (e) {

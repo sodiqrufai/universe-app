@@ -14,7 +14,7 @@ export default function AnnouncementsPage() {
   const [universityId, setUniversityId] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +47,7 @@ export default function AnnouncementsPage() {
     }
     setSending(true);
     setError(null);
-    setSuccess(false);
+    setSuccess(null);
     try {
       // adminApi.post always JSON-encodes — a file can't ride along in
       // a JSON body, so this bypasses it for a direct multipart fetch,
@@ -83,7 +83,11 @@ export default function AnnouncementsPage() {
         setTitle('');
         setBody('');
         clearImage();
-        setSuccess(true);
+        setSuccess(
+          data.imageUploadFailed
+            ? 'Announcement sent, but the image failed to attach. You can edit the announcement to try adding it again.'
+            : 'Announcement sent.',
+        );
       } else {
         setError(data.error || 'Failed to send announcement');
       }
@@ -167,7 +171,11 @@ export default function AnnouncementsPage() {
         )}
 
         {error && <p className="text-error text-sm mb-3">{error}</p>}
-        {success && <p className="text-success text-sm mb-3">Announcement sent.</p>}
+        {success && (
+          <p className={`text-sm mb-3 ${success.includes('failed') ? 'text-warning' : 'text-success'}`}>
+            {success}
+          </p>
+        )}
 
         <button
           onClick={handleSend}

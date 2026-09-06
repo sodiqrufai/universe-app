@@ -349,6 +349,7 @@ export class AdminController {
     if (error) return { success: false, error: error.message };
 
     let announcement = data;
+    let imageUploadFailed = false;
 
     if (file) {
       // Insert-then-upload-then-update: the storage path needs the row's real
@@ -360,6 +361,7 @@ export class AdminController {
 
       if (uploadError) {
         console.error('Announcement image upload error:', uploadError);
+        imageUploadFailed = true;
       } else {
         const { data: urlData } = this.supabase.client.storage.from('announcement-images').getPublicUrl(filePath);
         const { data: updated, error: updateError } = await this.supabase.client
@@ -368,12 +370,22 @@ export class AdminController {
           .eq('id', data.id)
           .select()
           .single();
-        if (!updateError && updated) announcement = updated;
+        if (!updateError && updated) {
+          announcement = updated;
+        } else {
+          console.error('Announcement image URL save error:', updateError);
+          imageUploadFailed = true;
+        }
       }
     }
 
     await this.logAction(admin.id, 'create_announcement', 'announcements', data.id);
-    return { success: true, announcement };
+    // success stays true -- the announcement itself was created either way,
+    // and blocking that on an image hiccup would be worse than the image
+    // just not attaching. imageUploadFailed lets the frontend tell the admin
+    // specifically what didn't work, instead of leaving them to wonder why
+    // no image shows up.
+    return { success: true, announcement, imageUploadFailed };
   }
 
   // ---------- Reports queue ----------

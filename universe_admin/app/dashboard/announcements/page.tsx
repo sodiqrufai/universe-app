@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { adminApi } from '../../../lib/adminApi';
+import { API_BASE_URL } from '../../../lib/apiConfig';
 
 type University = { id: string; name: string };
 
@@ -14,12 +15,29 @@ export default function AnnouncementsPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     adminApi.get('/admin/universities').then((data) => {
       if (data.success) setUniversities(data.universities);
     });
   }, []);
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImage(null);
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) return;
@@ -31,15 +49,40 @@ export default function AnnouncementsPage() {
     setError(null);
     setSuccess(false);
     try {
-      const data = await adminApi.post('/admin/announcements', {
-        title: title.trim(),
-        body: body.trim(),
-        isGlobal,
-        universityId: isGlobal ? undefined : universityId,
-      });
+      // adminApi.post always JSON-encodes — a file can't ride along in
+      // a JSON body, so this bypasses it for a direct multipart fetch,
+      // same exception mobile's ApiService makes for image/avatar
+      // uploads. Falls back to the normal JSON path when there's no
+      // image at all, since that still works today either way.
+      let data;
+      if (image) {
+        const token = localStorage.getItem('admin_token');
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('body', body.trim());
+        formData.append('isGlobal', String(isGlobal));
+        if (!isGlobal) formData.append('universityId', universityId);
+        formData.append('file', image);
+
+        const res = await fetch(`${API_BASE_URL}/admin/announcements`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        data = await res.json();
+      } else {
+        data = await adminApi.post('/admin/announcements', {
+          title: title.trim(),
+          body: body.trim(),
+          isGlobal,
+          universityId: isGlobal ? undefined : universityId,
+        });
+      }
+
       if (data.success) {
         setTitle('');
         setBody('');
+        clearImage();
         setSuccess(true);
       } else {
         setError(data.error || 'Failed to send announcement');
@@ -74,6 +117,31 @@ export default function AnnouncementsPage() {
           rows={4}
           className="w-full border border-border rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
         />
+
+        <label className="block text-sm font-medium text-text-secondary mb-1">Image (optional)</label>
+        <div className="mb-4">
+          {imagePreview ? (
+            <div className="relative inline-block">
+              <img src={imagePreview} alt="Announcement preview" className="h-32 rounded-lg border border-border object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute -top-2 -right-2 bg-surface border border-border rounded-full w-6 h-6 flex items-center justify-center text-text-secondary hover:text-error"
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImagePick}
+              className="w-full text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-white file:font-semibold hover:file:bg-primary-dark file:cursor-pointer"
+            />
+          )}
+        </div>
 
         <label className="flex items-center gap-2 mb-4 text-sm text-foreground">
           <input type="checkbox" checked={isGlobal} onChange={(e) => setIsGlobal(e.target.checked)} />

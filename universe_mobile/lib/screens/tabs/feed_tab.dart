@@ -448,6 +448,15 @@ class _FeedTabState extends State<FeedTab> {
                   a['body'] ?? '',
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
+                if (a['image_url'] != null) ...[
+                  const SizedBox(height: 8),
+                  AppNetworkImage(
+                    a['image_url'],
+                    width: double.infinity,
+                    height: 140,
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
+                  ),
+                ],
               ],
             ),
           ),

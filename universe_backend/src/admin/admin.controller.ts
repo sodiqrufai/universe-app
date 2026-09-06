@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UnauthorizedException, ForbiddenException, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -317,30 +318,62 @@ export class AdminController {
   // ---------- Announcements ----------
 
   @Post('announcements')
+  @UseInterceptors(FileInterceptor('file'))
   async createAnnouncement(
     @Headers('authorization') authHeader: string,
-    @Body() body: { title: string; body: string; universityId?: string; isGlobal?: boolean },
+    @UploadedFile() file: any,
+    @Body() body: { title: string; body: string; universityId?: string; isGlobal?: string },
   ) {
     const admin = await this.getAdminFromToken(authHeader);
     if (!body.title?.trim() || !body.body?.trim()) {
       return { success: false, error: 'Title and body are required' };
     }
 
+    // Multipart form fields arrive as strings, so isGlobal needs an explicit
+    // string check rather than relying on JS truthiness -- the string
+    // "false" is truthy in JS and would silently break this toggle.
+    const isGlobal = body.isGlobal === 'true';
+
     const { data, error } = await this.supabase.client
       .from('announcements')
       .insert({
         title: body.title.trim(),
         body: body.body.trim(),
-        university_id: body.isGlobal ? null : body.universityId ?? null,
-        is_global: !!body.isGlobal,
+        university_id: isGlobal ? null : body.universityId ?? null,
+        is_global: isGlobal,
         sent_by: admin.id,
       })
       .select()
       .single();
 
     if (error) return { success: false, error: error.message };
+
+    let announcement = data;
+
+    if (file) {
+      // Insert-then-upload-then-update: the storage path needs the row's real
+      // id, same pattern already used for marketplace listing images.
+      const filePath = `${data.id}/image.jpg`;
+      const { error: uploadError } = await this.supabase.client.storage
+        .from('announcement-images')
+        .upload(filePath, file.buffer, { contentType: file.mimetype });
+
+      if (uploadError) {
+        console.error('Announcement image upload error:', uploadError);
+      } else {
+        const { data: urlData } = this.supabase.client.storage.from('announcement-images').getPublicUrl(filePath);
+        const { data: updated, error: updateError } = await this.supabase.client
+          .from('announcements')
+          .update({ image_url: urlData.publicUrl })
+          .eq('id', data.id)
+          .select()
+          .single();
+        if (!updateError && updated) announcement = updated;
+      }
+    }
+
     await this.logAction(admin.id, 'create_announcement', 'announcements', data.id);
-    return { success: true, announcement: data };
+    return { success: true, announcement };
   }
 
   // ---------- Reports queue ----------

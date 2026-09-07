@@ -99,12 +99,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'English',
               onTap: () => _push(const LanguageScreen()),
             ),
-            _tile(
-              icon: Icons.dark_mode_outlined,
-              label: 'Dark Mode',
-              subtitle: 'Coming soon',
-              onTap: null,
-            ),
           ]),
           _sectionLabel('Content'),
           _sectionCard([

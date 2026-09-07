@@ -62,15 +62,15 @@ class _WaitlistScreenState extends State<WaitlistScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.hourglass_top_outlined, size: 56, color: AppColors.primary),
+            Icon(Icons.hourglass_top_outlined, size: 56, color: AppColors.primary),
             const SizedBox(height: 24),
             Text(
               'UniVerse isn\'t at ${widget.university.name} yet',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Join the waitlist and we\'ll notify you the moment we launch there.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary),
@@ -79,7 +79,7 @@ class _WaitlistScreenState extends State<WaitlistScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error), textAlign: TextAlign.center),
+                child: Text(_error!, style: TextStyle(color: AppColors.error), textAlign: TextAlign.center),
               ),
             ElevatedButton(
               onPressed: _joining ? null : _join,

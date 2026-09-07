@@ -74,9 +74,9 @@ class _WaitlistHoldingScreenState extends State<WaitlistHoldingScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.hourglass_top_outlined, size: 56, color: AppColors.primary),
+            Icon(Icons.hourglass_top_outlined, size: 56, color: AppColors.primary),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'You\'re on the list',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -85,13 +85,13 @@ class _WaitlistHoldingScreenState extends State<WaitlistHoldingScreen> {
             Text(
               'We\'ll email you the moment UniVerse launches at ${widget.universityName}. No need to keep checking back.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             OutlinedButton(
               onPressed: _leaving ? null : _leaveWaitlist,
               child: _leaving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),

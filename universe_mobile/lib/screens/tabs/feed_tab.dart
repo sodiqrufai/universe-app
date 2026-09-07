@@ -553,12 +553,42 @@ class _FeedTabState extends State<FeedTab> {
                       .toList(),
                 ),
               ],
-              if (post['image_url'] != null) ...[
+              // A reshared post always has empty content of its own — what
+              // renders here is the original post, embedded, since that's
+              // the whole point of a repost. If the original was since
+              // deleted, repost['deleted'] is true and there's nothing to
+              // embed, so that gets a plain "no longer available" state
+              // instead of silently showing nothing.
+              if (post['repost'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: post['repost']['deleted'] == true
+                      ? Container(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(AppRadius.medium),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.link_off, size: 16, color: AppColors.textMuted),
+                              SizedBox(width: 8),
+                              Text(
+                                'Original post no longer available',
+                                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _buildEmbeddedOriginal(post['repost']),
+                )
+              else if (post['image_url'] != null) ...[
                 const SizedBox(height: 10),
                 AppNetworkImage(
                   post['image_url'],
                   width: double.infinity,
-                  height: 180,
+                  fit: BoxFit.fitWidth,
                   borderRadius: BorderRadius.circular(AppRadius.medium),
                 ),
               ],
@@ -642,6 +672,57 @@ class _FeedTabState extends State<FeedTab> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmbeddedOriginal(dynamic original) {
+    final originalProfile = original['profiles'];
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.medium),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: AppColors.lightPurple,
+                backgroundImage: originalProfile?['avatar_url'] != null
+                    ? NetworkImage(originalProfile['avatar_url'])
+                    : null,
+                child: originalProfile?['avatar_url'] == null
+                    ? Icon(Icons.person, size: 12, color: AppColors.primary)
+                    : null,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  originalProfile?['full_name'] ?? 'Student',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (original['content'] != null && original['content'].toString().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(original['content'], style: const TextStyle(fontSize: 13)),
+          ],
+          if (original['image_url'] != null) ...[
+            const SizedBox(height: 8),
+            AppNetworkImage(
+              original['image_url'],
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
+              borderRadius: BorderRadius.circular(AppRadius.medium),
+            ),
+          ],
+        ],
       ),
     );
   }

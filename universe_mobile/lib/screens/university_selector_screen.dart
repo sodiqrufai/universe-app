@@ -8,14 +8,22 @@ import '../widgets/state_views.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/profile_setup_data.dart';
 import 'faculty_selector_screen.dart';
+import 'waitlist_screen.dart';
 
 class University {
   final String id;
   final String name;
   final String? shortName;
   final String? city;
+  final bool isPilot;
 
-  University({required this.id, required this.name, this.shortName, this.city});
+  University({
+    required this.id,
+    required this.name,
+    this.shortName,
+    this.city,
+    this.isPilot = true,
+  });
 
   factory University.fromJson(Map<String, dynamic> json) {
     return University(
@@ -23,6 +31,10 @@ class University {
       name: json['name'],
       shortName: json['short_name'],
       city: json['city'],
+      // Defaults true so this doesn't accidentally start gating every
+      // university into the waitlist the moment before the backend
+      // actually adds this field to the response.
+      isPilot: json['is_pilot'] ?? true,
     );
   }
 }
@@ -95,6 +107,12 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   }
 
   Future<void> _select(University u) async {
+    if (!u.isPilot) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => WaitlistScreen(university: u)),
+      );
+      return;
+    }
     try {
       final data = await ApiService.patch('/profile/update', {'universityId': u.id});
       if (data['success'] == true) {

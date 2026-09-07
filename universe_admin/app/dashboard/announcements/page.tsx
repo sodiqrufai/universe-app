@@ -42,7 +42,10 @@ export default function AnnouncementsPage() {
     setListLoading(true);
     const data = await adminApi.get(`/admin/announcements?page=${page}&pageSize=${pageSize}`);
     if (data.success) {
-      setAnnouncements(data.items);
+      // Response key is `announcements`, not the generic `items` other
+      // paginated admin endpoints use — checked admin.controller.ts
+      // directly rather than assuming it matched Students/Reports.
+      setAnnouncements(data.announcements);
       setTotal(data.total);
     }
     setListLoading(false);

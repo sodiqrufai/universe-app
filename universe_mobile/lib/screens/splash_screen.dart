@@ -10,6 +10,7 @@ import 'university_selector_screen.dart';
 import 'faculty_selector_screen.dart';
 import 'department_selector_screen.dart';
 import 'level_selector_screen.dart';
+import 'waitlist_holding_screen.dart';
 import 'main_shell.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -44,13 +45,21 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     try {
-      final data = await ApiService.get('/profile/me');
+      final results = await Future.wait([
+        ApiService.get('/profile/me'),
+        ApiService.get('/waitlist/status'),
+      ]);
+      final data = results[0];
+      final waitlistData = results[1];
       if (data['success'] == true) {
         final profile = data['profile'];
+        final waitlist = waitlistData['success'] == true && waitlistData['waitlisted'] == true
+            ? waitlistData
+            : null;
 
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => _resolveResumeScreen(profile)),
+          MaterialPageRoute(builder: (_) => _resolveResumeScreen(profile, waitlist)),
         );
       } else {
         // Token invalid/expired even after refresh attempt.
@@ -93,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen> {
   /// from the live fetch, not the default empty one, so a session
   /// resumed midway through University..Level still carries the real
   /// username/bio forward to the eventual batched save at Level.
-  Widget _resolveResumeScreen(Map<String, dynamic> profile) {
+  Widget _resolveResumeScreen(Map<String, dynamic> profile, Map<String, dynamic>? waitlist) {
     final setupData = ProfileSetupData(
       username: profile['username'] ?? '',
       bio: profile['bio'] ?? '',
@@ -111,6 +120,22 @@ class _SplashScreenState extends State<SplashScreen> {
     }
 
     // Bio is optional — never blocks resume, always treated as satisfied.
+
+    // A waitlist entry means this user already tried to pick their
+    // university and it wasn't piloted yet — university_id will be
+    // null for them by definition (nothing was ever saved), so this
+    // has to be checked before the university_id check below, or
+    // they'd be sent right back to UniversitySelectorScreen and see
+    // the exact same "not available yet" outcome again, indistinguishable
+    // from the app being broken.
+    //
+    // This comes from a separate GET /waitlist/status call, not from
+    // profile/me — the backend keeps waitlist status as its own
+    // resource (waitlist_entries table) rather than folding it into
+    // the profile response.
+    if (waitlist != null) {
+      return WaitlistHoldingScreen(universityName: waitlist['universityName'] ?? 'your university');
+    }
 
     if (profile['university_id'] == null) {
       return UniversitySelectorScreen(setupData: setupData);

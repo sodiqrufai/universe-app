@@ -51,11 +51,21 @@ class _ExploreTabState extends State<ExploreTab> {
 
   // Education/courses has no server-side pagination yet — fetched
   // once, in full, only in _fetchAll. Events/Services/Marketplace all
-  // added real page/pageSize pagination — _loadMore() advances a
-  // shared page number and fetches the next page of each of those 3
-  // in parallel, appending into the merged grid.
+  // added real page/pageSize pagination.
+  //
+  // Architecture decision: Explore stays ONE merged, filterable feed
+  // rather than four separate paginated screens — filtering is just a
+  // view over the same accumulated _items, so switching categories
+  // doesn't need a refetch. But pagination itself is per-type, not
+  // one shared page number: with "All" selected, scrolling near the
+  // bottom advances every paginated type that still has more, same as
+  // before. With one specific category filtered (e.g. Marketplace
+  // only), scrolling only advances THAT type's page — no point
+  // fetching more Events/Services pages the user can't currently see.
   static const _pageSize = 20;
-  int _page = 1;
+  final Map<_ExploreType, int> _pages = {
+    for (final t in [_ExploreType.event, _ExploreType.service, _ExploreType.marketplace]) t: 1,
+  };
   bool _loadingMore = false;
   final Map<_ExploreType, int> _totals = {};
 
@@ -67,12 +77,18 @@ class _ExploreTabState extends State<ExploreTab> {
 
   int _loadedCountFor(_ExploreType type) => _items.where((i) => i.type == type).length;
 
-  bool get _hasMore {
-    for (final type in _paginatedTypes) {
-      if (_loadedCountFor(type) < (_totals[type] ?? 0)) return true;
-    }
-    return false;
+  bool _typeHasMore(_ExploreType type) => _loadedCountFor(type) < (_totals[type] ?? 0);
+
+  /// Which paginated types the NEXT _loadMore() call should advance —
+  /// just the active filter if it's one of the 3 paginated types, or
+  /// all of them when "All" (or Education, which has nothing to
+  /// advance) is selected.
+  List<_ExploreType> get _typesToAdvance {
+    if (_paginatedTypes.contains(_filter)) return [_filter!];
+    return _paginatedTypes;
   }
+
+  bool get _hasMore => _typesToAdvance.any(_typeHasMore);
 
   @override
   void initState() {
@@ -98,25 +114,35 @@ class _ExploreTabState extends State<ExploreTab> {
   Future<void> _loadMore() async {
     if (_loadingMore || !_hasMore) return;
     setState(() => _loadingMore = true);
-    final nextPage = _page + 1;
-    final eventsResult = await _fetchEvents(page: nextPage);
-    final servicesResult = await _fetchServices(page: nextPage);
-    final marketResult = await _fetchMarketplace(page: nextPage);
+
+    final types = _typesToAdvance.where(_typeHasMore).toList();
+    final futures = <_ExploreType, Future<({List<_ExploreItem>? items, int total})>>{};
+    for (final type in types) {
+      final nextPage = (_pages[type] ?? 1) + 1;
+      futures[type] = switch (type) {
+        _ExploreType.event => _fetchEvents(page: nextPage),
+        _ExploreType.service => _fetchServices(page: nextPage),
+        _ExploreType.marketplace => _fetchMarketplace(page: nextPage),
+        _ => Future.value((items: <_ExploreItem>[], total: 0)),
+      };
+    }
+
+    final results = <_ExploreType, ({List<_ExploreItem>? items, int total})>{};
+    for (final entry in futures.entries) {
+      results[entry.key] = await entry.value;
+    }
+
     if (!mounted) return;
     setState(() {
-      if (eventsResult.items != null) {
-        _items.addAll(eventsResult.items!);
-        _totals[_ExploreType.event] = eventsResult.total;
+      for (final entry in results.entries) {
+        final type = entry.key;
+        final result = entry.value;
+        if (result.items != null) {
+          _items.addAll(result.items!);
+          _totals[type] = result.total;
+          _pages[type] = (_pages[type] ?? 1) + 1;
+        }
       }
-      if (servicesResult.items != null) {
-        _items.addAll(servicesResult.items!);
-        _totals[_ExploreType.service] = servicesResult.total;
-      }
-      if (marketResult.items != null) {
-        _items.addAll(marketResult.items!);
-        _totals[_ExploreType.marketplace] = marketResult.total;
-      }
-      _page = nextPage;
       _loadingMore = false;
     });
   }
@@ -126,7 +152,9 @@ class _ExploreTabState extends State<ExploreTab> {
       _loading = true;
       _partialFailure = false;
       _totalFailure = false;
-      _page = 1;
+      for (final type in _paginatedTypes) {
+        _pages[type] = 1;
+      }
     });
 
     final eduFuture = _fetchEducation();

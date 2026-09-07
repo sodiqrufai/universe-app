@@ -56,6 +56,7 @@ class AppTheme {
   static ThemeData light() {
     return ThemeData(
       useMaterial3: true,
+      brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
@@ -137,6 +138,122 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: AppColors.border,
+        thickness: 1,
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
+    );
+  }
+
+  // Self-contained dark palette -- deliberately NOT routed through
+  // AppColors (which stays plain `static const`, light-only). Making every
+  // AppColors reference across the app brightness-aware turned out to be
+  // the "stressful" version in practice: it required removing `const` from
+  // every call site that used an AppColors field inside a const
+  // expression, across 60+ files, and proved fragile to merge/maintain.
+  // This version only makes Flutter's own themed Material elements (button
+  // colors, app bar, cards, inputs, dividers) respond to dark mode --
+  // custom widgets that hardcode AppColors.x directly won't automatically
+  // adapt. Full per-widget dark-mode coverage would need that fuller
+  // approach revisited later if it's ever worth the added complexity.
+  static ThemeData dark() {
+    const darkPrimary = Color(0xFF8B6DFF);
+    const darkSecondary = Color(0xFF9B7FFF);
+    const darkBackground = Color(0xFF121218);
+    const darkSurface = Color(0xFF1C1C24);
+    const darkTextPrimary = Color(0xFFF0F0F5);
+    const darkBorder = Color(0xFF2E2E3A);
+    const darkError = Color(0xFFE57975);
+
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: darkBackground,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: darkPrimary,
+        brightness: Brightness.dark,
+        primary: darkPrimary,
+        secondary: darkSecondary,
+        error: darkError,
+        surface: darkSurface,
+      ),
+      textTheme: GoogleFonts.poppinsTextTheme(ThemeData(brightness: Brightness.dark).textTheme).apply(
+        bodyColor: darkTextPrimary,
+        displayColor: darkTextPrimary,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: darkBackground,
+        foregroundColor: darkTextPrimary,
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: darkTextPrimary,
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: darkPrimary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+          ),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: darkPrimary,
+          side: const BorderSide(color: darkBorder),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.medium),
+          ),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: darkSurface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: const BorderSide(color: darkBorder),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkSurface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+          borderSide: const BorderSide(color: darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.medium),
+          borderSide: const BorderSide(color: darkPrimary, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: darkBorder,
         thickness: 1,
       ),
       pageTransitionsTheme: const PageTransitionsTheme(

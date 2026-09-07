@@ -388,6 +388,70 @@ export class AdminController {
     return { success: true, announcement, imageUploadFailed };
   }
 
+  @Get('announcements')
+  async getAnnouncements(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
+    await this.getAdminFromToken(authHeader);
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 25));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
+
+    const { data, error, count } = await this.supabase.client
+      .from('announcements')
+      .select('id, title, body, image_url, sent_by, is_global, university_id, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, announcements: data, total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Delete('announcements/:id')
+  async deleteAnnouncement(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    const admin = await this.getAdminFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('announcements')
+      .select('id, image_url')
+      .eq('id', id)
+      .single();
+
+    if (!existing) {
+      return { success: false, error: 'Announcement not found' };
+    }
+
+    if (existing.image_url) {
+      // Storage path always follows the `${id}/image.jpg` convention set at
+      // upload time -- reconstructing it directly from the id is more
+      // reliable than parsing it back out of the public URL.
+      const { error: removeError } = await this.supabase.client.storage
+        .from('announcement-images')
+        .remove([`${id}/image.jpg`]);
+      if (removeError) {
+        console.error('Announcement image delete error:', removeError);
+      }
+    }
+
+    const { data: deleted, error } = await this.supabase.client
+      .from('announcements')
+      .delete()
+      .eq('id', id)
+      .select();
+
+    if (error) return { success: false, error: error.message };
+    if (!deleted || deleted.length === 0) {
+      return { success: false, error: 'Announcement not found' };
+    }
+
+    await this.logAction(admin.id, 'delete_announcement', 'announcements', id);
+    return { success: true };
+  }
+
   // ---------- Reports queue ----------
 
   @Get('reports')

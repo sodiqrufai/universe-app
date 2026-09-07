@@ -39,6 +39,8 @@ export class MarketplaceController {
     @Query('search') search?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -54,33 +56,47 @@ export class MarketplaceController {
       // an unscoped, platform-wide query -- that would leak every
       // university's listings to an account that shouldn't see any of them
       // yet. Return empty instead.
-      return { success: true, listings: [] };
+      return { success: true, items: [], total: 0, page: 1, pageSize: parseInt(pageSize, 10) || 20 };
     }
 
-    let query = this.supabase.client
-      .from('listings')
-      .select('*, profiles(full_name, username, avatar_url), listing_images(image_url, sort_order)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .eq('university_id', profile.university_id);
-    if (categoryId) query = query.eq('category_id', categoryId);
-    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
-    if (minPrice) query = query.gte('price', minPrice);
-    if (maxPrice) query = query.lte('price', maxPrice);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 20));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
 
-    const { data, error } = await query;
-    if (error) return { success: false, error: error.message };
-
+    // Blocked-user exclusion is resolved and applied at the query level,
+    // BEFORE .range() runs -- filtering it out afterward, on an already
+    // paginated page, would silently return fewer than a full page even when
+    // more genuinely existed.
     const { data: blocks } = await this.supabase.client
       .from('blocked_users')
       .select('blocker_id, blocked_id')
       .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-
     const blockedSellerIds = new Set(
       (blocks ?? []).map((b) => (b.blocker_id === user.id ? b.blocked_id : b.blocker_id)),
     );
-    const listings = (data ?? []).filter((l: any) => !blockedSellerIds.has(l.seller_id));
 
+    let query = this.supabase.client
+      .from('listings')
+      .select('*, profiles(full_name, username, avatar_url), listing_images(image_url, sort_order)', { count: 'exact' })
+      .eq('status', 'active')
+      .eq('university_id', profile.university_id)
+      .order('created_at', { ascending: false });
+
+    if (categoryId) query = query.eq('category_id', categoryId);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
+    if (minPrice) query = query.gte('price', minPrice);
+    if (maxPrice) query = query.lte('price', maxPrice);
+    if (blockedSellerIds.size > 0) {
+      query = query.not('seller_id', 'in', `(${Array.from(blockedSellerIds).join(',')})`);
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+
+    const listings = data ?? [];
     const listingIds = listings.map((l) => l.id);
     let savedSet = new Set<string>();
     if (listingIds.length > 0) {
@@ -97,7 +113,7 @@ export class MarketplaceController {
       isSaved: savedSet.has(l.id),
     }));
 
-    return { success: true, listings: enriched };
+    return { success: true, items: enriched, total: count ?? 0, page: pageNum, pageSize: size };
   }
 
   @Get('listings/:id')

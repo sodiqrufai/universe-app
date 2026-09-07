@@ -28,7 +28,7 @@ export class AppController {
   async getUniversities() {
     const { data, error } = await this.supabase.client
       .from('universities')
-      .select('id, name, short_name, city, ownership_type')
+      .select('id, name, short_name, city, ownership_type, is_pilot')
       .eq('is_active', true)
       .order('name');
 

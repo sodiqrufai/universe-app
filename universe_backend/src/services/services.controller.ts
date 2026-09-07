@@ -33,6 +33,8 @@ export class ServicesController {
     @Headers('authorization') authHeader: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -43,33 +45,41 @@ export class ServicesController {
       .single();
 
     if (!profile?.university_id) {
-      return { success: true, services: [] };
+      return { success: true, items: [], total: 0, page: 1, pageSize: parseInt(pageSize, 10) || 20 };
     }
 
-    let query = this.supabase.client
-      .from('services')
-      .select('*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .eq('university_id', profile.university_id);
-
-    if (categoryId) query = query.eq('category_id', categoryId);
-    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
-
-    const { data, error } = await query;
-    if (error) return { success: false, error: error.message };
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 20));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
 
     const { data: blocks } = await this.supabase.client
       .from('blocked_users')
       .select('blocker_id, blocked_id')
       .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-
     const blockedProviderIds = new Set(
       (blocks ?? []).map((b) => (b.blocker_id === user.id ? b.blocked_id : b.blocker_id)),
     );
-    const services = (data ?? []).filter((s: any) => !blockedProviderIds.has(s.provider_id));
 
-    return { success: true, services };
+    let query = this.supabase.client
+      .from('services')
+      .select('*, profiles(full_name, username, avatar_url), service_images(image_url, sort_order)', { count: 'exact' })
+      .eq('status', 'active')
+      .eq('university_id', profile.university_id)
+      .order('created_at', { ascending: false });
+
+    if (categoryId) query = query.eq('category_id', categoryId);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
+    if (blockedProviderIds.size > 0) {
+      query = query.not('provider_id', 'in', `(${Array.from(blockedProviderIds).join(',')})`);
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+
+    return { success: true, items: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
   }
 
   @Get('listings/:id')

@@ -33,6 +33,8 @@ export class EventsController {
     @Headers('authorization') authHeader: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
   ) {
     const user = await this.getUserFromToken(authHeader);
 
@@ -43,39 +45,47 @@ export class EventsController {
       .single();
 
     if (!profile?.university_id) {
-      return { success: true, events: [] };
+      return { success: true, items: [], total: 0, page: 1, pageSize: parseInt(pageSize, 10) || 20 };
     }
 
-    let query = this.supabase.client
-      .from('events')
-      .select('*, profiles(full_name, username, avatar_url), event_rsvps(user_id, status)')
-      .eq('status', 'active')
-      .order('starts_at', { ascending: true })
-      .eq('university_id', profile.university_id);
-
-    if (categoryId) query = query.eq('category_id', categoryId);
-    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
-
-    const { data, error } = await query;
-    if (error) return { success: false, error: error.message };
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(50, Math.max(1, parseInt(pageSize, 10) || 20));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
 
     const { data: blocks } = await this.supabase.client
       .from('blocked_users')
       .select('blocker_id, blocked_id')
       .or(`blocker_id.eq.${user.id},blocked_id.eq.${user.id}`);
-
     const blockedOrganizerIds = new Set(
       (blocks ?? []).map((b) => (b.blocker_id === user.id ? b.blocked_id : b.blocker_id)),
     );
-    const visibleEvents = (data ?? []).filter((e: any) => !blockedOrganizerIds.has(e.organizer_id));
 
-    const enriched = visibleEvents.map((e: any) => {
+    let query = this.supabase.client
+      .from('events')
+      .select('*, profiles(full_name, username, avatar_url), event_rsvps(user_id, status)', { count: 'exact' })
+      .eq('status', 'active')
+      .eq('university_id', profile.university_id)
+      .order('starts_at', { ascending: true });
+
+    if (categoryId) query = query.eq('category_id', categoryId);
+    if (search) query = query.textSearch('search_vector', search, { type: 'websearch', config: 'english' });
+    if (blockedOrganizerIds.size > 0) {
+      query = query.not('organizer_id', 'in', `(${Array.from(blockedOrganizerIds).join(',')})`);
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+
+    const enriched = (data ?? []).map((e: any) => {
       const goingCount = e.event_rsvps?.filter((r: any) => r.status === 'going').length ?? 0;
       const myRsvp = e.event_rsvps?.find((r: any) => r.user_id === user.id)?.status ?? null;
       return { ...e, goingCount, myRsvp };
     });
 
-    return { success: true, events: enriched };
+    return { success: true, items: enriched, total: count ?? 0, page: pageNum, pageSize: size };
   }
 
   @Get('mine')

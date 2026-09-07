@@ -174,7 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Profile')),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
           : SingleChildScrollView(
@@ -192,7 +192,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                           backgroundImage: _avatarImage(),
                           child: _avatarImage() == null
-                              ? const Icon(
+                              ? Icon(
                                   Icons.person,
                                   size: 50,
                                   color: AppColors.primary,

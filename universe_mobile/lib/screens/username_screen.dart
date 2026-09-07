@@ -126,16 +126,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
   Widget _buildStatusIcon() {
     switch (_state) {
       case _CheckState.checking:
-        return const SizedBox(
+        return SizedBox(
           width: 16,
           height: 16,
           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
         );
       case _CheckState.available:
-        return const Icon(Icons.check_circle, color: AppColors.success, size: 20);
+        return Icon(Icons.check_circle, color: AppColors.success, size: 20);
       case _CheckState.taken:
       case _CheckState.formatError:
-        return const Icon(Icons.cancel, color: AppColors.error, size: 20);
+        return Icon(Icons.cancel, color: AppColors.error, size: 20);
       case _CheckState.idle:
         return const SizedBox.shrink();
     }
@@ -161,12 +161,12 @@ class _UsernameScreenState extends State<UsernameScreen> {
               const StepProgressDots(currentStep: 3, totalSteps: 12),
               const SizedBox(height: 24),
             ],
-            const Text(
+            Text(
               'Choose a username',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'This is your unique @handle on UniVerse.',
               style: TextStyle(color: AppColors.textSecondary),
             ),

@@ -36,7 +36,7 @@ class AppNetworkImage extends StatelessWidget {
         width: width,
         height: height,
         color: AppColors.lightPurple,
-        child: const Center(
+        child: Center(
           child: SizedBox(
             width: 18,
             height: 18,
@@ -48,7 +48,7 @@ class AppNetworkImage extends StatelessWidget {
         width: width,
         height: height,
         color: AppColors.lightPurple,
-        child: const Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
+        child: Icon(Icons.broken_image_outlined, color: AppColors.textMuted),
       ),
     );
     if (borderRadius == null) return image;

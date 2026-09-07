@@ -106,7 +106,7 @@ class _ProfileTabState extends State<ProfileTab> {
             _buildAcademicCard(universityName, departmentName, level),
           ],
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'My Shortcuts',
             style: TextStyle(
               fontSize: 16,
@@ -170,7 +170,7 @@ class _ProfileTabState extends State<ProfileTab> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppColors.primary, AppColors.primaryDark],
@@ -310,7 +310,7 @@ class _ProfileTabState extends State<ProfileTab> {
               color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.school_outlined,
               color: AppColors.primary,
             ),
@@ -332,7 +332,7 @@ class _ProfileTabState extends State<ProfileTab> {
                         departmentName,
                         level,
                       ].where((x) => x != null).join(' • '),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
                       ),
@@ -366,7 +366,7 @@ class _ProfileTabState extends State<ProfileTab> {
           child: Icon(icon, color: AppColors.primary, size: 20),
         ),
         title: Text(label, style: const TextStyle(fontSize: 14)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+        trailing: Icon(Icons.chevron_right, color: AppColors.textMuted),
         onTap: onTap,
       ),
     );

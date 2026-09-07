@@ -172,7 +172,7 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
         final u = _filtered[index];
         return Card(
           child: ListTile(
-            leading: const CircleAvatar(
+            leading: CircleAvatar(
               backgroundColor: AppColors.primary,
               child: Icon(Icons.school, color: Colors.white),
             ),

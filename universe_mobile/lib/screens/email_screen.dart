@@ -49,12 +49,12 @@ class _EmailScreenState extends State<EmailScreen> {
           children: [
             const StepProgressDots(currentStep: 1, totalSteps: 12),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'What\'s your email?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'We\'ll use this to create your account.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -74,7 +74,7 @@ class _EmailScreenState extends State<EmailScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(onPressed: _continue, child: const Text('Continue')),
           ],

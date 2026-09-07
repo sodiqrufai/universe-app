@@ -56,7 +56,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(
+            Icon(
               Icons.warning_amber_rounded,
               color: AppColors.error,
               size: 48,
@@ -67,7 +67,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Type DELETE to confirm',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -82,7 +82,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               onPressed: canDelete && !_deleting ? _delete : null,
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               child: _deleting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(

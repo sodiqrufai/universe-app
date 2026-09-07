@@ -322,17 +322,17 @@ class _ExploreTabState extends State<ExploreTab> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.storefront_outlined, color: AppColors.primary),
+              leading: Icon(Icons.storefront_outlined, color: AppColors.primary),
               title: const Text('Marketplace listing'),
               onTap: () => Navigator.pop(context, _ExploreType.marketplace),
             ),
             ListTile(
-              leading: const Icon(Icons.design_services_outlined, color: AppColors.primary),
+              leading: Icon(Icons.design_services_outlined, color: AppColors.primary),
               title: const Text('Service'),
               onTap: () => Navigator.pop(context, _ExploreType.service),
             ),
             ListTile(
-              leading: const Icon(Icons.event_outlined, color: AppColors.primary),
+              leading: Icon(Icons.event_outlined, color: AppColors.primary),
               title: const Text('Event'),
               onTap: () => Navigator.pop(context, _ExploreType.event),
             ),
@@ -437,7 +437,7 @@ class _ExploreTabState extends State<ExploreTab> {
             ),
           ),
           if (_loadingMore)
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Center(
@@ -465,9 +465,9 @@ class _ExploreTabState extends State<ExploreTab> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, size: 16, color: AppColors.warning),
+          Icon(Icons.info_outline, size: 16, color: AppColors.warning),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
               'Some content could not load.',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -581,7 +581,7 @@ class _ExploreTabState extends State<ExploreTab> {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: AppColors.textPrimary,
@@ -592,7 +592,7 @@ class _ExploreTabState extends State<ExploreTab> {
                     item.subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),

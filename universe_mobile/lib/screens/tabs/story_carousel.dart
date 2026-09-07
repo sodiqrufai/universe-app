@@ -73,12 +73,12 @@ class StoryCarouselState extends State<StoryCarousel> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_outlined, color: AppColors.primary),
+              leading: Icon(Icons.photo_outlined, color: AppColors.primary),
               title: const Text('Photo'),
               onTap: () => Navigator.pop(context, 'image'),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam_outlined, color: AppColors.primary),
+              leading: Icon(Icons.videocam_outlined, color: AppColors.primary),
               title: const Text('Video'),
               onTap: () => Navigator.pop(context, 'video'),
             ),
@@ -183,7 +183,7 @@ class StoryCarouselState extends State<StoryCarousel> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const SizedBox(
+      return SizedBox(
         height: 92,
         child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
       );
@@ -239,13 +239,13 @@ class StoryCarouselState extends State<StoryCarousel> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: hasUnviewed
-                          ? const LinearGradient(colors: [AppColors.primary, AppColors.secondary])
+                          ? LinearGradient(colors: [AppColors.primary, AppColors.secondary])
                           : null,
                       color: (hasStory && !hasUnviewed) ? AppColors.border : null,
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.background,
                         shape: BoxShape.circle,
                       ),
@@ -254,7 +254,7 @@ class StoryCarouselState extends State<StoryCarousel> {
                         backgroundColor: AppColors.lightPurple,
                         backgroundImage: myAvatarUrl != null ? NetworkImage(myAvatarUrl) : null,
                         child: myAvatarUrl == null
-                            ? const Icon(Icons.person, color: AppColors.primary)
+                            ? Icon(Icons.person, color: AppColors.primary)
                             : null,
                       ),
                     ),
@@ -292,7 +292,7 @@ class StoryCarouselState extends State<StoryCarousel> {
               ),
             ),
             const SizedBox(height: 4),
-            const Text('Your Story', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text('Your Story', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
         ),
@@ -312,14 +312,14 @@ class StoryCarouselState extends State<StoryCarousel> {
             Container(
               width: 60,
               height: 60,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.lightPurple,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.campaign, color: AppColors.primary, size: 26),
+              child: Icon(Icons.campaign, color: AppColors.primary, size: 26),
             ),
             const SizedBox(height: 4),
-            const Text('Notices', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text('Notices', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
       ),
@@ -347,13 +347,13 @@ class StoryCarouselState extends State<StoryCarousel> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: hasUnviewed
-                    ? const LinearGradient(colors: [AppColors.primary, AppColors.secondary])
+                    ? LinearGradient(colors: [AppColors.primary, AppColors.secondary])
                     : null,
                 color: hasUnviewed ? null : AppColors.border,
               ),
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.background,
                   shape: BoxShape.circle,
                 ),
@@ -364,7 +364,7 @@ class StoryCarouselState extends State<StoryCarousel> {
                       ? NetworkImage(profile['avatar_url'])
                       : null,
                   child: profile?['avatar_url'] == null
-                      ? const Icon(Icons.person, color: AppColors.primary, size: 20)
+                      ? Icon(Icons.person, color: AppColors.primary, size: 20)
                       : null,
                 ),
               ),
@@ -374,7 +374,7 @@ class StoryCarouselState extends State<StoryCarousel> {
               name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
         ),

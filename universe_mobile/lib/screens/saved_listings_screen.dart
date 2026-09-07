@@ -98,7 +98,7 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
                       height: 50,
                       borderRadius: BorderRadius.circular(8),
                     )
-                  : const Icon(Icons.image_outlined, color: AppColors.primary),
+                  : Icon(Icons.image_outlined, color: AppColors.primary),
               title: Text(l['title']),
               subtitle: Text('₦${l['price']}'),
               onTap: () async {
@@ -136,7 +136,7 @@ class _SavedListingsScreenState extends State<SavedListingsScreen> {
           final profile = p['profiles'];
           return Card(
             child: ListTile(
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 backgroundColor: AppColors.lightPurple,
                 child: Icon(Icons.person, color: AppColors.primary),
               ),

@@ -107,13 +107,13 @@ class _AnonymousSetupScreenState extends State<AnonymousSetupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(
+            Icon(
               Icons.masks_outlined,
               size: 56,
               color: AppColors.primary,
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Speak freely. Stay anonymous.',
               style: TextStyle(
                 fontSize: 20,

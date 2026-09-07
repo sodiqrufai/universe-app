@@ -20,7 +20,7 @@ class _TrendingScreenState extends State<TrendingScreen> {
   bool _loading = true;
   bool _hasError = false;
 
-  static const _colors = [
+  static List<Color> get _colors => [
     AppColors.primary,
     AppColors.success,
     AppColors.warning,
@@ -118,10 +118,10 @@ class _TrendingScreenState extends State<TrendingScreen> {
                 ),
                 Text(
                   '${t['count']} posts',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                Icon(Icons.chevron_right, color: AppColors.textMuted),
               ],
             ),
           ),

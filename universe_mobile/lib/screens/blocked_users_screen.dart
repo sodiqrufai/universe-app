@@ -96,7 +96,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
                     ? NetworkImage(profile['avatar_url'])
                     : null,
                 child: profile?['avatar_url'] == null
-                    ? const Icon(Icons.person, color: AppColors.primary)
+                    ? Icon(Icons.person, color: AppColors.primary)
                     : null,
               ),
               title: Text(profile?['full_name'] ?? 'Unknown'),

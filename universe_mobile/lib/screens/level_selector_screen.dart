@@ -126,16 +126,16 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
   Widget _buildStatusIcon() {
     switch (_usernameState) {
       case _CheckState.checking:
-        return const SizedBox(
+        return SizedBox(
           width: 16,
           height: 16,
           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
         );
       case _CheckState.available:
-        return const Icon(Icons.check_circle, color: AppColors.success, size: 20);
+        return Icon(Icons.check_circle, color: AppColors.success, size: 20);
       case _CheckState.taken:
       case _CheckState.formatError:
-        return const Icon(Icons.cancel, color: AppColors.error, size: 20);
+        return Icon(Icons.cancel, color: AppColors.error, size: 20);
       case _CheckState.idle:
         return const SizedBox.shrink();
     }
@@ -176,7 +176,7 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 8),
-              child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+              child: Text(_error!, style: TextStyle(color: AppColors.error)),
             ),
           Expanded(
             child: ListView.separated(
@@ -188,7 +188,7 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
                 return Card(
                   child: ListTile(
                     enabled: !_submitting,
-                    leading: const Icon(Icons.school_outlined, color: AppColors.primary),
+                    leading: Icon(Icons.school_outlined, color: AppColors.primary),
                     title: Text(level),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _selectLevel(level),

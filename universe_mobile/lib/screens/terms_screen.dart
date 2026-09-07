@@ -10,7 +10,7 @@ class TermsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Terms & Conditions')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        children: const [
+        children: [
           Text(
             'Last updated: [add date before publishing]',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
@@ -78,7 +78,7 @@ class _Section extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 6),
-          Text(body, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
+          Text(body, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5)),
         ],
       ),
     );

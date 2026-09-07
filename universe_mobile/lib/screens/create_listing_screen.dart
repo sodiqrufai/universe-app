@@ -180,7 +180,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                           color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_a_photo_outlined,
                           color: AppColors.primary,
                         ),

@@ -227,7 +227,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [AppColors.primary, AppColors.primaryDark],
@@ -288,7 +288,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
             backgroundColor: AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.pill),
-              side: const BorderSide(color: AppColors.border),
+              side: BorderSide(color: AppColors.border),
             ),
           );
         },
@@ -322,13 +322,13 @@ class _AnonymousTabState extends State<AnonymousTab> {
                     ),
                     child: Text(
                       p['category'] ?? '',
-                      style: const TextStyle(fontSize: 10, color: AppColors.primary),
+                      style: TextStyle(fontSize: 10, color: AppColors.primary),
                     ),
                   ),
                   const Spacer(),
                   Text(
                     '@$username',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),

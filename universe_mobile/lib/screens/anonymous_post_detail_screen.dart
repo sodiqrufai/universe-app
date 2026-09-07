@@ -190,7 +190,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
               children: [
                 Text(
                   '@$username',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
@@ -215,7 +215,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
                           Expanded(
                             child: Text(
                               'Replying to @${_replyingTo['anonymous_profiles']?['anonymous_username'] ?? 'anonymous'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600,
@@ -224,7 +224,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
                           ),
                           GestureDetector(
                             onTap: () => setState(() => _replyingTo = null),
-                            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                            child: Icon(Icons.close, size: 16, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -244,12 +244,12 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
                         onPressed: _sending ? null : _sendComment,
                         tooltip: 'Send reply',
                         icon: _sending
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                               )
-                            : const Icon(Icons.send, color: AppColors.primary),
+                            : Icon(Icons.send, color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -264,7 +264,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
 
   Widget _buildComments() {
     if (_loading) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
@@ -272,14 +272,14 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
     if (_hasError) {
       return Column(
         children: [
-          const Text('Could not load comments', style: TextStyle(color: AppColors.textSecondary)),
+          Text('Could not load comments', style: TextStyle(color: AppColors.textSecondary)),
           const SizedBox(height: 8),
           OutlinedButton(onPressed: _fetchComments, child: const Text('Retry')),
         ],
       );
     }
     if (_comments.isEmpty) {
-      return const Text('No comments yet.', style: TextStyle(color: AppColors.textSecondary));
+      return Text('No comments yet.', style: TextStyle(color: AppColors.textSecondary));
     }
     return Column(
       children: _comments.map((c) => _buildCommentThread(c)).toList(),
@@ -299,7 +299,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
               padding: const EdgeInsets.only(left: 8, top: 8),
               child: Container(
                 padding: const EdgeInsets.only(left: 14),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(left: BorderSide(color: AppColors.border, width: 2)),
                 ),
                 child: Column(
@@ -328,7 +328,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
       children: [
         Text(
           '@$cUsername',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.textSecondary,
@@ -354,7 +354,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
                       const SizedBox(width: 3),
                       Text(
                         '$reactionCount',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                     ],
                   ],
@@ -364,7 +364,7 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
             const SizedBox(width: 16),
             GestureDetector(
               onTap: () => _startReply(c),
-              child: const Text(
+              child: Text(
                 'Reply',
                 style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
               ),

@@ -71,7 +71,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.lock_outline, color: AppColors.primary, size: 40),
+            Icon(Icons.lock_outline, color: AppColors.primary, size: 40),
             const SizedBox(height: AppSpacing.lg),
             const Text(
               'To change your password, we\'ll email you a secure reset link.',
@@ -81,7 +81,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             if (_email != null)
               Text(
                 'We\'ll send it to $_email',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
             const SizedBox(height: AppSpacing.xxl),
             if (_sent)
@@ -91,7 +91,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.card),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     Icon(Icons.check_circle, color: AppColors.success),
                     SizedBox(width: AppSpacing.md),
@@ -118,7 +118,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
           ],
         ),

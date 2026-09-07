@@ -35,7 +35,7 @@ class _FeedTabState extends State<FeedTab> {
   bool _loadingMore = false;
   bool get _hasMore => _posts.length < _total;
 
-  static const _tagColors = [
+  static List<Color> get _tagColors => [
     AppColors.primary,
     AppColors.success,
     AppColors.warning,
@@ -282,7 +282,7 @@ class _FeedTabState extends State<FeedTab> {
                 else
                   ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),
                 if (_loadingMore)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
                     child: Center(
                       child: SizedBox(
@@ -309,13 +309,13 @@ class _FeedTabState extends State<FeedTab> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Trending on Campus',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
               ),
               GestureDetector(
                 onTap: _openTrendingScreen,
-                child: const Text(
+                child: Text(
                   'See all',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                 ),
@@ -388,12 +388,12 @@ class _FeedTabState extends State<FeedTab> {
           Expanded(
             child: Text(
               'Showing posts tagged "$_activeTag"',
-              style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
             ),
           ),
           GestureDetector(
             onTap: () => _selectTag(null),
-            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+            child: Icon(Icons.close, size: 16, color: AppColors.primary),
           ),
         ],
       ),
@@ -411,7 +411,7 @@ class _FeedTabState extends State<FeedTab> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.campaign_outlined, color: AppColors.primary, size: 20),
+          Icon(Icons.campaign_outlined, color: AppColors.primary, size: 20),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -434,7 +434,7 @@ class _FeedTabState extends State<FeedTab> {
                         ),
                         child: Text(
                           a['senderLabel'],
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 9,
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
@@ -446,7 +446,7 @@ class _FeedTabState extends State<FeedTab> {
                 const SizedBox(height: 2),
                 Text(
                   a['body'] ?? '',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 if (a['image_url'] != null) ...[
                   const SizedBox(height: 8),
@@ -499,7 +499,7 @@ class _FeedTabState extends State<FeedTab> {
                     backgroundColor: AppColors.lightPurple,
                     backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
                     child: avatarUrl == null
-                        ? const Icon(Icons.person, size: 18, color: AppColors.primary)
+                        ? Icon(Icons.person, size: 18, color: AppColors.primary)
                         : null,
                   ),
                   const SizedBox(width: 10),
@@ -515,7 +515,7 @@ class _FeedTabState extends State<FeedTab> {
                         ),
                         if (isVerified) ...[
                           const SizedBox(width: 4),
-                          const Icon(Icons.verified, size: 14, color: AppColors.primary),
+                          Icon(Icons.verified, size: 14, color: AppColors.primary),
                         ],
                       ],
                     ),
@@ -527,7 +527,7 @@ class _FeedTabState extends State<FeedTab> {
                         color: AppColors.warning.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Global',
                         style: TextStyle(fontSize: 10, color: AppColors.warning, fontWeight: FontWeight.w600),
                       ),
@@ -546,7 +546,7 @@ class _FeedTabState extends State<FeedTab> {
                           onTap: () => _selectTag(t),
                           child: Text(
                             '#$t',
-                            style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                            style: TextStyle(fontSize: 12, color: AppColors.primary),
                           ),
                         ),
                       )
@@ -580,7 +580,7 @@ class _FeedTabState extends State<FeedTab> {
                         const SizedBox(width: 4),
                         Text(
                           '${counts['like'] ?? 0}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -602,7 +602,7 @@ class _FeedTabState extends State<FeedTab> {
                         const SizedBox(width: 4),
                         Text(
                           '${counts['love'] ?? 0}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -614,15 +614,15 @@ class _FeedTabState extends State<FeedTab> {
                     label: 'Reshare this post',
                     child: GestureDetector(
                     onTap: () => _reshare(post['id']),
-                    child: const Icon(Icons.repeat, size: 18, color: AppColors.textSecondary),
+                    child: Icon(Icons.repeat, size: 18, color: AppColors.textSecondary),
                     ),
                   ),
                   const SizedBox(width: 20),
-                  const Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
+                  Icon(Icons.mode_comment_outlined, size: 18, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
                   Text(
                     '${post['commentCount'] ?? 0}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   const Spacer(),
                   Semantics(

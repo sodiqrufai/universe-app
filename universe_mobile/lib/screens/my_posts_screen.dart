@@ -75,20 +75,20 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
             color: isRemoved ? AppColors.lightPurple.withValues(alpha: 0.4) : null,
             child: ListTile(
               leading: isRemoved
-                  ? const Icon(Icons.block, color: AppColors.error)
+                  ? Icon(Icons.block, color: AppColors.error)
                   : null,
               title: Text(
                 p['content'],
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: isRemoved
-                    ? const TextStyle(color: AppColors.textMuted, decoration: TextDecoration.lineThrough)
+                    ? TextStyle(color: AppColors.textMuted, decoration: TextDecoration.lineThrough)
                     : null,
               ),
               subtitle: isRemoved
                   ? Text(
                       'Removed by a moderator${p['removed_reason'] != null ? ': ${p['removed_reason']}' : ''}',
-                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                      style: TextStyle(color: AppColors.error, fontSize: 12),
                     )
                   : Text('${p['reactionCounts']?['like'] ?? 0} likes, ${p['reactionCounts']?['love'] ?? 0} loves'),
               onTap: isRemoved

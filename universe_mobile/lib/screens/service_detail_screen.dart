@@ -233,7 +233,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
@@ -244,7 +244,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+              Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
               const SizedBox(height: 12),
               const Text('Could not load this service'),
               const SizedBox(height: 12),
@@ -274,7 +274,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ),
           if (isMine)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              icon: Icon(Icons.delete_outline, color: AppColors.error),
               tooltip: 'Delete service',
               onPressed: _deleteService,
             ),
@@ -298,7 +298,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             Container(
               height: 220,
               color: AppColors.lightPurple,
-              child: const Icon(
+              child: Icon(
                 Icons.design_services_outlined,
                 size: 56,
                 color: AppColors.primary,
@@ -311,7 +311,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               children: [
                 Text(
                   _service!['title'] ?? '',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -320,7 +320,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 const SizedBox(height: 4),
                 Text(
                   priceLabel,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -330,7 +330,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 if (_service!['description'] != null)
                   Text(
                     _service!['description'],
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
                   ),
                 const SizedBox(height: AppSpacing.xl),
                 Container(
@@ -349,7 +349,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             ? NetworkImage(profile['avatar_url'])
                             : null,
                         child: profile?['avatar_url'] == null
-                            ? const Icon(Icons.person, size: 18, color: AppColors.primary)
+                            ? Icon(Icons.person, size: 18, color: AppColors.primary)
                             : null,
                       ),
                       const SizedBox(width: AppSpacing.sm),

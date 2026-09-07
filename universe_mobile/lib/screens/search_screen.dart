@@ -203,7 +203,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildBody() {
     if (_query.length < 2) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(AppSpacing.xl),
           child: Text(
@@ -215,14 +215,14 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
     if (_hasError) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Could not search right now', style: TextStyle(color: AppColors.textSecondary)),
+            Text('Could not search right now', style: TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 12),
             OutlinedButton(onPressed: () => _search(reset: true), child: const Text('Retry')),
           ],
@@ -237,7 +237,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     if (nonEmptySections.isEmpty) {
       return Center(
-        child: Text('No results for "$_query"', style: const TextStyle(color: AppColors.textSecondary)),
+        child: Text('No results for "$_query"', style: TextStyle(color: AppColors.textSecondary)),
       );
     }
 
@@ -247,7 +247,7 @@ class _SearchScreenState extends State<SearchScreen> {
       children: [
         for (final type in nonEmptySections) _buildSection(type),
         if (_loadingMore)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
               child: SizedBox(
@@ -273,7 +273,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
           child: Text(
             '${_sectionLabels[type]} ($total)',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
           ),
         ),
         ...items.map((item) => _buildResultTile(type, item)),

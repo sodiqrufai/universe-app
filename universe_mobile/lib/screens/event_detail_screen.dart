@@ -178,7 +178,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
@@ -189,7 +189,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+              Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
               const SizedBox(height: 12),
               const Text('Could not load this event'),
               const SizedBox(height: 12),
@@ -221,7 +221,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
           if (isMine && !isCancelled)
             IconButton(
-              icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+              icon: Icon(Icons.cancel_outlined, color: AppColors.error),
               tooltip: 'Cancel event',
               onPressed: _cancelEvent,
             ),
@@ -240,7 +240,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             Container(
               height: 220,
               color: AppColors.lightPurple,
-              child: const Icon(Icons.event, size: 60, color: AppColors.primary),
+              child: Icon(Icons.event, size: 60, color: AppColors.primary),
             ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -254,7 +254,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Cancelled',
                       style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
                     ),
@@ -263,29 +263,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
                 Text(
                   _event!['title'] ?? '',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(dateLabel, style: const TextStyle(color: AppColors.textSecondary)),
+                Text(dateLabel, style: TextStyle(color: AppColors.textSecondary)),
                 if (_event!['location'] != null)
                   Text(
                     _event!['location'],
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   '${_event!['goingCount'] ?? 0} going • ${_event!['interestedCount'] ?? 0} interested',
-                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 if (_event!['description'] != null)
                   Text(
                     _event!['description'],
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
                   ),
                 const SizedBox(height: AppSpacing.lg),
                 Container(
@@ -304,7 +304,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             ? NetworkImage(profile['avatar_url'])
                             : null,
                         child: profile?['avatar_url'] == null
-                            ? const Icon(Icons.person, size: 16, color: AppColors.primary)
+                            ? Icon(Icons.person, size: 16, color: AppColors.primary)
                             : null,
                       ),
                       const SizedBox(width: AppSpacing.sm),

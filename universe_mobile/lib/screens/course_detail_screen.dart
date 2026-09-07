@@ -168,7 +168,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           future: ApiService.get('/education/groups/$groupId/members'),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+              return Center(child: CircularProgressIndicator(color: AppColors.primary));
             }
             final data = snapshot.data as Map<String, dynamic>;
             final members = data['members'] ?? [];
@@ -192,7 +192,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                 backgroundColor: AppColors.lightPurple,
                                 backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
                                 child: avatarUrl == null
-                                    ? const Icon(Icons.person, color: AppColors.primary)
+                                    ? Icon(Icons.person, color: AppColors.primary)
                                     : null,
                               ),
                               title: Text(m?['full_name'] ?? 'Student'),
@@ -437,14 +437,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   Widget _buildResourcesList() {
     if (_loadingResources) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
     if (_resourcesError) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+            Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
             const SizedBox(height: 12),
             const Text('Could not load resources'),
             const SizedBox(height: 12),
@@ -476,9 +476,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             title: Text(r['title'] ?? ''),
             subtitle: Text(
               r['resource_type'] ?? '',
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
-            trailing: const Icon(Icons.download_outlined, color: AppColors.textMuted),
+            trailing: Icon(Icons.download_outlined, color: AppColors.textMuted),
             onTap: () => launchUrl(
               Uri.parse(r['file_path']),
               mode: LaunchMode.externalApplication,
@@ -523,14 +523,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   Widget _buildGroupsList() {
     if (_loadingGroups) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
     if (_groupsError) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+            Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
             const SizedBox(height: 12),
             const Text('Could not load study groups'),
             const SizedBox(height: 12),
@@ -557,7 +557,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               onTap: () => _showMembers(g['id'], g['name'] ?? 'Group'),
               child: Text(
                 '${g['memberCount'] ?? 0} members · View members',
-                style: const TextStyle(color: AppColors.primary),
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
             trailing: Row(
@@ -565,7 +565,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               children: [
                 if (isCreator)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    icon: Icon(Icons.delete_outline, color: AppColors.error),
                     tooltip: 'Delete group',
                     onPressed: () => _deleteGroup(g['id']),
                   ),
@@ -574,7 +574,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   style: isMember
                       ? OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
-                          side: const BorderSide(color: AppColors.border),
+                          side: BorderSide(color: AppColors.border),
                         )
                       : ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,

@@ -156,7 +156,7 @@ class _MessagesTabState extends State<MessagesTab> {
         onRefresh: _fetchInbox,
         color: AppColors.primary,
         child: ListView(
-          children: const [
+          children: [
             SizedBox(height: 120),
             Icon(Icons.chat_bubble_outline, size: 40, color: AppColors.textMuted),
             SizedBox(height: 12),
@@ -202,7 +202,7 @@ class _MessagesTabState extends State<MessagesTab> {
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: list.length,
         separatorBuilder: (_, _) =>
-            const Divider(height: 1, indent: 76, color: AppColors.border),
+            Divider(height: 1, indent: 76, color: AppColors.border),
         itemBuilder: (context, index) {
           final c = list[index];
           final isUnread = c['unread'] == true;
@@ -248,14 +248,14 @@ class _MessagesTabState extends State<MessagesTab> {
               children: [
                 Text(
                   timeLabel,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
                 if (isUnread)
                   Container(
                     margin: const EdgeInsets.only(top: 6),
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),

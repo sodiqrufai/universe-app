@@ -155,7 +155,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       children: [
                         Text(
                           timeLabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             color: AppColors.textSecondary,
                           ),
@@ -165,7 +165,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             margin: const EdgeInsets.only(top: 4),
                             width: 8,
                             height: 8,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),

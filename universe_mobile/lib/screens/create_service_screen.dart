@@ -187,7 +187,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                           color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add_a_photo_outlined,
                           color: AppColors.primary,
                         ),

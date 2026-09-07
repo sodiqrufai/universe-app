@@ -29,19 +29,19 @@ class LanguageScreen extends StatelessWidget {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
-                    child: const Icon(Icons.check, color: AppColors.primary),
+                    decoration: BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
+                    child: Icon(Icons.check, color: AppColors.primary),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   const Expanded(
                     child: Text('English', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                   ),
-                  const Icon(Icons.check_circle, color: AppColors.primary),
+                  Icon(Icons.check_circle, color: AppColors.primary),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'More languages aren\'t available yet — UniVerse currently only supports English.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),

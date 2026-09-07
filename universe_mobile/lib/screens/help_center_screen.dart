@@ -53,7 +53,7 @@ class HelpCenterScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     faq.$2,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
                   ),
                 ],
               ),
@@ -65,7 +65,7 @@ class HelpCenterScreen extends StatelessWidget {
               color: AppColors.lightPurple,
               borderRadius: BorderRadius.circular(AppRadius.card),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.mail_outline, color: AppColors.primary),
                 SizedBox(width: AppSpacing.md),

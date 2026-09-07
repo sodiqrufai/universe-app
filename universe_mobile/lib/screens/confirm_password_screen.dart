@@ -116,9 +116,9 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.mark_email_unread_outlined, color: AppColors.primary, size: 56),
+              Icon(Icons.mark_email_unread_outlined, color: AppColors.primary, size: 56),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'Confirm your email',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
@@ -126,7 +126,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               Text(
                 'We sent a confirmation link to ${widget.data.email}. Verify it, then log in to finish setting up your profile.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.textSecondary),
+                style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -151,7 +151,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
           children: [
             const StepProgressDots(currentStep: 5, totalSteps: 12),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Confirm your password',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
@@ -176,7 +176,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(
               onPressed: _submitting ? null : _continue,

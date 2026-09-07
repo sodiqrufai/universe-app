@@ -100,7 +100,7 @@ class _MainShellState extends State<MainShell> {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.error,
                       shape: BoxShape.circle,
                     ),

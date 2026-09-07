@@ -5,6 +5,15 @@ import { adminApi } from '../../../lib/adminApi';
 import { API_BASE_URL } from '../../../lib/apiConfig';
 
 type University = { id: string; name: string };
+type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  image_url: string | null;
+  is_global: boolean;
+  university_id: string | null;
+  created_at: string;
+};
 
 export default function AnnouncementsPage() {
   const [universities, setUniversities] = useState<University[]>([]);
@@ -18,6 +27,41 @@ export default function AnnouncementsPage() {
   const [image, setImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const pageSize = 25;
+  const [confirmTarget, setConfirmTarget] = useState<Announcement | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const fetchAnnouncements = async () => {
+    setListLoading(true);
+    const data = await adminApi.get(`/admin/announcements?page=${page}&pageSize=${pageSize}`);
+    if (data.success) {
+      setAnnouncements(data.items);
+      setTotal(data.total);
+    }
+    setListLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAnnouncements();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const handleDelete = async (announcement: Announcement) => {
+    setDeleting(true);
+    const data = await adminApi.delete(`/admin/announcements/${announcement.id}`);
+    setDeleting(false);
+    setConfirmTarget(null);
+    if (data.success) {
+      fetchAnnouncements();
+    }
+  };
 
   useEffect(() => {
     adminApi.get('/admin/universities').then((data) => {
@@ -88,6 +132,8 @@ export default function AnnouncementsPage() {
             ? 'Announcement sent, but the image failed to attach. You can edit the announcement to try adding it again.'
             : 'Announcement sent.',
         );
+        setPage(1);
+        fetchAnnouncements();
       } else {
         setError(data.error || 'Failed to send announcement');
       }
@@ -102,8 +148,7 @@ export default function AnnouncementsPage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-foreground mb-1">Announcements</h1>
       <p className="text-text-secondary mb-6">
-        Posted announcements feed straight into students&apos; Feed tab. There&apos;s no history view
-        here yet — the backend only has a send endpoint, not a list one.
+        Posted announcements feed straight into students&apos; Feed tab.
       </p>
 
       <div className="bg-surface border border-border rounded-2xl p-6 max-w-xl">
@@ -185,6 +230,104 @@ export default function AnnouncementsPage() {
           {sending ? 'Sending...' : 'Send Announcement'}
         </button>
       </div>
+
+      <div className="bg-surface border border-border rounded-2xl p-6 max-w-xl mt-8">
+        <h2 className="text-lg font-bold text-foreground mb-4">History</h2>
+
+        {listLoading ? (
+          <p className="text-text-secondary text-sm">Loading...</p>
+        ) : announcements.length === 0 ? (
+          <p className="text-text-secondary text-sm">No announcements sent yet.</p>
+        ) : (
+          <>
+            <div className="flex flex-col gap-3">
+              {announcements.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-start gap-3 border border-border rounded-lg p-3"
+                >
+                  {a.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={a.image_url}
+                      alt=""
+                      className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-lg bg-light-purple flex-shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground truncate">{a.title}</p>
+                    <p className="text-text-secondary text-sm truncate">{a.body}</p>
+                    <p className="text-text-muted text-xs mt-1">
+                      {a.is_global ? 'All universities' : 'Single university'} ·{' '}
+                      {new Date(a.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmTarget(a)}
+                    aria-label={`Delete ${a.title}`}
+                    className="text-text-secondary hover:text-error p-1 flex-shrink-0"
+                  >
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-text-secondary">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {confirmTarget && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-2xl p-6 max-w-sm w-full">
+            <h2 className="text-lg font-bold text-foreground mb-2">
+              Delete &quot;{confirmTarget.title}&quot;?
+            </h2>
+            <p className="text-text-secondary text-sm mb-5">
+              This removes it from students&apos; Feed tab immediately. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmTarget(null)}
+                disabled={deleting}
+                className="flex-1 bg-light-purple text-foreground rounded-lg py-2 font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(confirmTarget)}
+                disabled={deleting}
+                className="flex-1 bg-error text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -159,7 +159,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Tags (optional, up to 5)',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
@@ -170,7 +170,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               decoration: InputDecoration(
                 hintText: 'e.g. Exam Tips, Hostel Life',
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.add, color: AppColors.primary),
+                  icon: Icon(Icons.add, color: AppColors.primary),
                   tooltip: 'Add tag',
                   onPressed: () => _addTag(_tagController.text),
                 ),
@@ -187,8 +187,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       (t) => Chip(
                         label: Text(t),
                         backgroundColor: AppColors.lightPurple,
-                        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 12),
-                        deleteIcon: const Icon(Icons.close, size: 14, color: AppColors.primary),
+                        labelStyle: TextStyle(color: AppColors.primary, fontSize: 12),
+                        deleteIcon: Icon(Icons.close, size: 14, color: AppColors.primary),
                         onDeleted: () => setState(() => _tags.remove(t)),
                         side: BorderSide.none,
                       ),
@@ -202,13 +202,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 IconButton(
                   onPressed: _pickImage,
                   tooltip: 'Add image',
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.image_outlined,
                     color: AppColors.primary,
                   ),
                 ),
                 const Spacer(),
-                const Text(
+                Text(
                   'Visibility:',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
@@ -233,7 +233,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
           ],
         ),

@@ -183,7 +183,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: _coverBytes == null
-                    ? const Center(
+                    ? Center(
                         child: Icon(
                           Icons.add_photo_alternate_outlined,
                           size: 40,
@@ -219,7 +219,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(
+              leading: Icon(
                 Icons.calendar_today_outlined,
                 color: AppColors.primary,
               ),

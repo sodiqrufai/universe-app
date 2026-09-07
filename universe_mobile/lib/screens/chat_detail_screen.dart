@@ -230,8 +230,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.block, color: AppColors.error),
-              title: const Text('Block user', style: TextStyle(color: AppColors.error)),
+              leading: Icon(Icons.block, color: AppColors.error),
+              title: Text('Block user', style: TextStyle(color: AppColors.error)),
               onTap: () {
                 Navigator.pop(context);
                 _block();
@@ -381,7 +381,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: AppColors.lightPurple,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.lock_outline, size: 12, color: AppColors.primary),
@@ -421,7 +421,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           onPressed: () => setState(() => _showEmojiPicker = !_showEmojiPicker),
         ),
         IconButton(
-          icon: const Icon(Icons.image_outlined, color: AppColors.primary),
+          icon: Icon(Icons.image_outlined, color: AppColors.primary),
           tooltip: 'Attach image',
           onPressed: _pickAndSendImage,
         ),
@@ -443,14 +443,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             onLongPressStart: (_) => _startRecording(),
             onLongPressEnd: (_) => _stopRecordingAndSend(),
             onLongPressCancel: _cancelRecording,
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(8),
               child: Icon(Icons.mic_none, color: AppColors.primary),
             ),
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.send, color: AppColors.primary),
+          icon: Icon(Icons.send, color: AppColors.primary),
           tooltip: 'Send message',
           onPressed: () => _sendMessage(),
         ),
@@ -466,7 +466,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         Expanded(
           child: Text(
             'Recording  ${_formatDuration(Duration(seconds: _recordSeconds))}',
-            style: const TextStyle(color: AppColors.textSecondary),
+            style: TextStyle(color: AppColors.textSecondary),
           ),
         ),
         TextButton(
@@ -474,7 +474,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           child: const Text('Cancel'),
         ),
         IconButton(
-          icon: const Icon(Icons.send, color: AppColors.primary),
+          icon: Icon(Icons.send, color: AppColors.primary),
           tooltip: 'Send voice note',
           onPressed: _stopRecordingAndSend,
         ),
@@ -497,7 +497,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return Container(
       height: 180,
       padding: const EdgeInsets.all(8),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
@@ -632,7 +632,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                 : AppColors.textMuted,
                           ),
                           const SizedBox(width: 2),
-                          Text('${counts['like']}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                          Text('${counts['like']}', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                           const SizedBox(width: 6),
                         ],
                         if ((counts['love'] ?? 0) > 0) ...[
@@ -642,7 +642,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                             color: myReactions.contains('love') ? Colors.red : AppColors.textMuted,
                           ),
                           const SizedBox(width: 2),
-                          Text('${counts['love']}', style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                          Text('${counts['love']}', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
                         ],
                       ],
                     ),
@@ -664,7 +664,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             IconButton(
               iconSize: 32,
-              icon: const Icon(Icons.thumb_up, color: AppColors.primary),
+              icon: Icon(Icons.thumb_up, color: AppColors.primary),
               tooltip: 'React with thumbs up',
               onPressed: () {
                 Navigator.pop(context);

@@ -73,12 +73,12 @@ class _BioScreenState extends State<BioScreen> {
               const StepProgressDots(currentStep: 7, totalSteps: 12),
               const SizedBox(height: 24),
             ],
-            const Text(
+            Text(
               'Add a short bio',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Optional — tell people a bit about yourself.',
               style: TextStyle(color: AppColors.textSecondary),
             ),

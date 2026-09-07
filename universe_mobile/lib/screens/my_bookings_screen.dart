@@ -180,7 +180,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   ),
                   Text(
                     'From: ${b['profiles']?['full_name'] ?? 'Customer'}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   if (b['message'] != null && b['message'].toString().isNotEmpty)
                     Padding(

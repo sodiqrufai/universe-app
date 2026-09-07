@@ -109,7 +109,7 @@ class _NoticeBoardScreenState extends State<NoticeBoardScreen> {
                   color: AppColors.lightPurple,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.campaign, color: AppColors.primary, size: 16),
+                child: Icon(Icons.campaign, color: AppColors.primary, size: 16),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -118,7 +118,7 @@ class _NoticeBoardScreenState extends State<NoticeBoardScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
               ),
-              Text(dateLabel, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+              Text(dateLabel, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),

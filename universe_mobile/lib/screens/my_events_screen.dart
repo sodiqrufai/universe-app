@@ -81,7 +81,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: AppColors.lightPurple,
-                child: const Icon(Icons.event, color: AppColors.primary),
+                child: Icon(Icons.event, color: AppColors.primary),
               ),
               title: Text(event['title'] ?? ''),
               subtitle: Text('$dateLabel • ${entry['status']}'),

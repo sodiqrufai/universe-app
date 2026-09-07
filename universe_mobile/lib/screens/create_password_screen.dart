@@ -50,12 +50,12 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
           children: [
             const StepProgressDots(currentStep: 4, totalSteps: 12),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Create a password',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'At least 6 characters.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -80,7 +80,7 @@ class _CreatePasswordScreenState extends State<CreatePasswordScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(onPressed: _continue, child: const Text('Continue')),
           ],

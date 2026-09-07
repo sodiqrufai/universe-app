@@ -186,7 +186,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ? NetworkImage(_profile!['avatar_url'])
                     : null,
                 child: _profile!['avatar_url'] == null
-                    ? const Icon(Icons.person, size: 44, color: AppColors.primary)
+                    ? Icon(Icons.person, size: 44, color: AppColors.primary)
                     : null,
               ),
               Positioned(
@@ -201,7 +201,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(6),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
                         border: Border.fromBorderSide(
@@ -217,7 +217,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
-        const Text(
+        Text(
           'Here\'s your profile',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -234,18 +234,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
               for (int i = 0; i < rows.length; i++) ...[
                 ListTile(
                   leading: Icon(rows[i].$1, color: AppColors.primary, size: 20),
-                  title: Text(rows[i].$2, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  title: Text(rows[i].$2, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   subtitle: Text(
                     rows[i].$3 ?? '—',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                    icon: Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
                     tooltip: 'Edit ${rows[i].$2}',
                     onPressed: rows[i].$4,
                   ),
                 ),
-                if (i != rows.length - 1) const Divider(height: 1, indent: 56, color: AppColors.border),
+                if (i != rows.length - 1) Divider(height: 1, indent: 56, color: AppColors.border),
               ],
             ],
           ),

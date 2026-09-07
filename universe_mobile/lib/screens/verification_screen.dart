@@ -121,7 +121,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Get Verified',
               style: TextStyle(
                 fontSize: 22,
@@ -163,7 +163,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   ),
                 ),
                 child: _documentBytes == null
-                    ? const Center(
+                    ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [

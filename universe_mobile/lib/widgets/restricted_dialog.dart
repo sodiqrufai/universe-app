@@ -12,7 +12,7 @@ Future<void> showRestrictedDialog(BuildContext context, String message) {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
-      icon: const Icon(Icons.block, color: AppColors.error, size: 32),
+      icon: Icon(Icons.block, color: AppColors.error, size: 32),
       title: const Text('Action Restricted'),
       content: Text(message, textAlign: TextAlign.center),
       actionsAlignment: MainAxisAlignment.center,

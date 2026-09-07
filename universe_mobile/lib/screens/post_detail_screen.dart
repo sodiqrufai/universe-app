@@ -270,7 +270,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       backgroundColor: AppColors.lightPurple,
                       backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
                       child: avatarUrl == null
-                          ? const Icon(Icons.person, size: 18, color: AppColors.primary)
+                          ? Icon(Icons.person, size: 18, color: AppColors.primary)
                           : null,
                     ),
                     const SizedBox(width: 10),
@@ -319,7 +319,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           Expanded(
                             child: Text(
                               'Replying to ${_replyingTo['profiles']?['full_name'] ?? 'comment'}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w600,
@@ -328,7 +328,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                           GestureDetector(
                             onTap: () => setState(() => _replyingTo = null),
-                            child: const Icon(Icons.close, size: 16, color: AppColors.primary),
+                            child: Icon(Icons.close, size: 16, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -348,12 +348,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         onPressed: _sending ? null : _sendComment,
                         tooltip: 'Send comment',
                         icon: _sending
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                               )
-                            : const Icon(Icons.send, color: AppColors.primary),
+                            : Icon(Icons.send, color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -368,7 +368,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   Widget _buildComments() {
     if (_loading) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
         child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
@@ -376,7 +376,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     if (_hasError) {
       return Column(
         children: [
-          const Text(
+          Text(
             'Could not load comments',
             style: TextStyle(color: AppColors.textSecondary),
           ),
@@ -386,7 +386,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
     if (_comments.isEmpty) {
-      return const Text(
+      return Text(
         'No comments yet — be the first to reply.',
         style: TextStyle(color: AppColors.textSecondary),
       );
@@ -413,7 +413,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               padding: const EdgeInsets.only(left: 22, top: 8),
               child: Container(
                 padding: const EdgeInsets.only(left: 14),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(left: BorderSide(color: AppColors.border, width: 2)),
                 ),
                 child: Column(
@@ -479,7 +479,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           const SizedBox(width: 3),
                           Text(
                             '$reactionCount',
-                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                           ),
                         ],
                       ],
@@ -489,7 +489,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () => _startReply(c),
-                    child: const Text(
+                    child: Text(
                       'Reply',
                       style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                     ),

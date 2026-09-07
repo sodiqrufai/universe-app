@@ -134,7 +134,7 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Anonymous')),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
           : _hasError
@@ -205,7 +205,7 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
                                         ),
                                         child: Text(
                                           p['category'],
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 10,
                                             color: AppColors.primary,
                                           ),

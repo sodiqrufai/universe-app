@@ -78,7 +78,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: TextButton(
                   onPressed: _finish,
-                  child: const Text('Skip', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text('Skip', style: TextStyle(color: AppColors.textSecondary)),
                 ),
               ),
             ),
@@ -137,20 +137,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             width: 120,
             height: 120,
-            decoration: const BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
             child: Icon(slide.icon, size: 56, color: AppColors.primary),
           ),
           const SizedBox(height: AppSpacing.xxxl),
           Text(
             slide.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             slide.body,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5),
           ),
         ],
       ),

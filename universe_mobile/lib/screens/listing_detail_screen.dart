@@ -298,7 +298,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
@@ -309,7 +309,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
+              Icon(Icons.wifi_off, size: 40, color: AppColors.textMuted),
               const SizedBox(height: 12),
               const Text('Could not load this listing'),
               const SizedBox(height: 12),
@@ -337,7 +337,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
             ),
           if (isMine)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              icon: Icon(Icons.delete_outline, color: AppColors.error),
               tooltip: 'Delete listing',
               onPressed: _deleteListing,
             ),
@@ -358,7 +358,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     Expanded(
                       child: Text(
                         _listing!['title'] ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -377,7 +377,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 ),
                 Text(
                   '₦${_listing!['price']}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.primary,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -391,7 +391,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 if (_listing!['description'] != null)
                   Text(
                     _listing!['description'],
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
+                    style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textPrimary),
                   ),
                 const SizedBox(height: AppSpacing.xl),
                 _buildSellerRow(profile, isMine),
@@ -426,7 +426,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       return Container(
         height: 260,
         color: AppColors.lightPurple,
-        child: const Icon(Icons.image_outlined, size: 60, color: AppColors.primary),
+        child: Icon(Icons.image_outlined, size: 60, color: AppColors.primary),
       );
     }
     return Stack(
@@ -477,7 +477,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.primary,
@@ -503,7 +503,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                 ? NetworkImage(profile['avatar_url'])
                 : null,
             child: profile?['avatar_url'] == null
-                ? const Icon(Icons.person, size: 18, color: AppColors.primary)
+                ? Icon(Icons.person, size: 18, color: AppColors.primary)
                 : null,
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -526,10 +526,10 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
   Widget _buildOffersSection() {
     if (_loadingOffers) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
     if (_offers.isEmpty) {
-      return const Text('No offers yet', style: TextStyle(color: AppColors.textSecondary));
+      return Text('No offers yet', style: TextStyle(color: AppColors.textSecondary));
     }
     return Column(
       children: _offers.map((o) {
@@ -554,19 +554,19 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     ),
                     Text(
                       o['status'] ?? '',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
               ),
               if (o['status'] == 'pending') ...[
                 IconButton(
-                  icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+                  icon: Icon(Icons.check_circle_outline, color: AppColors.success),
                   tooltip: 'Accept offer',
                   onPressed: () => _respondToOffer(o['id'], 'accepted'),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                  icon: Icon(Icons.cancel_outlined, color: AppColors.error),
                   tooltip: 'Decline offer',
                   onPressed: () => _respondToOffer(o['id'], 'rejected'),
                 ),

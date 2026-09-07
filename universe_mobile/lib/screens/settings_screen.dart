@@ -196,14 +196,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () => _logout(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
+                side: BorderSide(color: AppColors.error),
               ),
               icon: const Icon(Icons.logout),
               label: const Text('Log Out'),
             ),
           ),
           const SizedBox(height: 12),
-          const Center(
+          Center(
             child: Text(
               'Your security is important to us. We\'ll never share your data.',
               textAlign: TextAlign.center,
@@ -224,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: AppColors.success.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text(
+        child: Text(
           'Verified',
           style: TextStyle(
             color: AppColors.success,
@@ -240,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: AppColors.accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
+      child: Text(
         'Pending',
         style: TextStyle(
           color: AppColors.accent,
@@ -256,7 +256,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           color: AppColors.primary,
           fontSize: 13,
@@ -319,7 +319,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing,
                 if (onTap != null) ...[
                   const SizedBox(width: 4),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right,
                     color: AppColors.textMuted,
                     size: 20,
@@ -328,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             )
           : (onTap != null
-              ? const Icon(Icons.chevron_right, color: AppColors.textMuted)
+              ? Icon(Icons.chevron_right, color: AppColors.textMuted)
               : null),
       onTap: onTap,
     );

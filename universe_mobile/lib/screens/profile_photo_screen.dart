@@ -106,12 +106,12 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
               const StepProgressDots(currentStep: 6, totalSteps: 12),
               const SizedBox(height: 24),
             ],
-            const Text(
+            Text(
               'Add a profile photo',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Help other students recognize you. You can always add this later.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -126,7 +126,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
                       backgroundColor: AppColors.lightPurple,
                       backgroundImage: _imageBytes != null ? MemoryImage(_imageBytes!) : null,
                       child: _imageBytes == null
-                          ? const Icon(Icons.person, size: 60, color: AppColors.primary)
+                          ? Icon(Icons.person, size: 60, color: AppColors.primary)
                           : null,
                     ),
                     Positioned(
@@ -134,7 +134,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
                       right: 0,
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
                         ),
@@ -149,7 +149,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: AppColors.error), textAlign: TextAlign.center),
+                child: Text(_error!, style: TextStyle(color: AppColors.error), textAlign: TextAlign.center),
               ),
             ElevatedButton(
               onPressed: _uploading ? null : _continue,

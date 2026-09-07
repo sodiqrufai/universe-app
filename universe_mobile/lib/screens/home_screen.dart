@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (status == 'approved') {
-      return const Chip(
+      return Chip(
         avatar: Icon(Icons.circle, size: 12, color: AppColors.success),
         label: Text('Verified Student'),
       );
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'Welcome! Your profile is set up.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: AppColors.textPrimary),

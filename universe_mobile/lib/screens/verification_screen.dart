@@ -156,7 +156,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
               child: Container(
                 height: 180,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: AppColors.primary.withValues(alpha: 0.3),

@@ -1,35 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'theme_controller.dart';
 
 /// UniVerse design tokens.
 /// Source of truth for every color used across the app — screens should
 /// always reference AppColors, never hardcode a hex value, so the whole
 /// app can be re-themed from this one file.
+///
+/// These are static GETTERS, not const fields, resolving against
+/// ThemeController.instance.isDark (the user's chosen preference --
+/// light/dark/system -- not raw platform brightness directly, so a manual
+/// override actually works). Every existing call site (AppColors.primary,
+/// AppColors.background, etc.) keeps working completely unchanged --
+/// Dart's `ClassName.member` access syntax is identical for a const field
+/// or a static getter. The one real implication: any `const` expression
+/// that directly references an AppColors field is no longer valid, since a
+/// getter isn't a compile-time constant -- that `const` keyword has to be
+/// removed at each such call site, throughout this file and every screen
+/// that uses one.
 class AppColors {
-  static const primary = Color(0xFF4F2CCF); // Deep UniVerse Purple
-  static const primaryDark = Color(0xFF2D1B8C);
-  static const secondary = Color(0xFF6D4AFF); // Secondary Purple
-  static const lightPurple = Color(0xFFF0ECFF);
-  static const veryLightPurple = Color(0xFFF7F5FF);
+  static bool get _isDark => ThemeController.instance.isDark;
 
-  static const background = Color(0xFFFAFAFC);
-  static const surface = Color(0xFFFFFFFF);
+  static Color get primary =>
+      _isDark ? const Color(0xFF8B6DFF) : const Color(0xFF4F2CCF);
+  static Color get primaryDark =>
+      _isDark ? const Color(0xFF6D4AFF) : const Color(0xFF2D1B8C);
+  static Color get secondary =>
+      _isDark ? const Color(0xFF9B7FFF) : const Color(0xFF6D4AFF);
+  static Color get lightPurple =>
+      _isDark ? const Color(0xFF2A2440) : const Color(0xFFF0ECFF);
+  static Color get veryLightPurple =>
+      _isDark ? const Color(0xFF211D33) : const Color(0xFFF7F5FF);
 
-  static const textPrimary = Color(0xFF15152A);
-  static const textSecondary = Color(0xFF6F7080);
-  static const textMuted = Color(0xFF9999A8);
-  static const border = Color(0xFFE8E8F0);
+  static Color get background =>
+      _isDark ? const Color(0xFF121218) : const Color(0xFFFAFAFC);
+  static Color get surface =>
+      _isDark ? const Color(0xFF1C1C24) : const Color(0xFFFFFFFF);
 
-  static const success = Color(0xFF2E9B62);
-  static const warning = Color(0xFFE9A23B);
-  static const error = Color(0xFFD9534F);
-  static const info = Color(0xFF4A7FE5);
+  static Color get textPrimary =>
+      _isDark ? const Color(0xFFF0F0F5) : const Color(0xFF15152A);
+  static Color get textSecondary =>
+      _isDark ? const Color(0xFFA8A8B8) : const Color(0xFF6F7080);
+  static Color get textMuted =>
+      _isDark ? const Color(0xFF75758A) : const Color(0xFF9999A8);
+  static Color get border =>
+      _isDark ? const Color(0xFF2E2E3A) : const Color(0xFFE8E8F0);
+
+  static Color get success =>
+      _isDark ? const Color(0xFF4CBE84) : const Color(0xFF2E9B62);
+  static Color get warning =>
+      _isDark ? const Color(0xFFF0B65C) : const Color(0xFFE9A23B);
+  static Color get error =>
+      _isDark ? const Color(0xFFE57975) : const Color(0xFFD9534F);
+  static Color get info =>
+      _isDark ? const Color(0xFF6E9BFF) : const Color(0xFF4A7FE5);
 
   // Kept as an alias so existing screens using AppColors.accent
   // (badges, highlights) keep working without a find-and-replace;
   // maps to warning, the closest token in the new system.
-  static const accent = warning;
+  static Color get accent => warning;
 }
 
 /// Spacing scale — use these instead of arbitrary padding/margin numbers.
@@ -53,22 +83,31 @@ class AppRadius {
 }
 
 class AppTheme {
-  static ThemeData light() {
+  /// Builds the ThemeData for the CURRENT AppColors state. Call this again
+  /// (e.g. from a widget listening to ThemeController) whenever the
+  /// preference changes -- it always reflects whatever AppColors currently
+  /// resolves to, light or dark.
+  static ThemeData current() {
+    final isDark = ThemeController.instance.isDark;
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: isDark ? Brightness.dark : Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
+        brightness: isDark ? Brightness.dark : Brightness.light,
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         error: AppColors.error,
         surface: AppColors.surface,
       ),
-      textTheme: GoogleFonts.poppinsTextTheme().apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
-      ),
+      textTheme:
+          GoogleFonts.poppinsTextTheme(
+            isDark ? ThemeData(brightness: Brightness.dark).textTheme : null,
+          ).apply(
+            bodyColor: AppColors.textPrimary,
+            displayColor: AppColors.textPrimary,
+          ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.textPrimary,
@@ -138,122 +177,6 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         color: AppColors.border,
-        thickness: 1,
-      ),
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        },
-      ),
-    );
-  }
-
-  // Self-contained dark palette -- deliberately NOT routed through
-  // AppColors (which stays plain `static const`, light-only). Making every
-  // AppColors reference across the app brightness-aware turned out to be
-  // the "stressful" version in practice: it required removing `const` from
-  // every call site that used an AppColors field inside a const
-  // expression, across 60+ files, and proved fragile to merge/maintain.
-  // This version only makes Flutter's own themed Material elements (button
-  // colors, app bar, cards, inputs, dividers) respond to dark mode --
-  // custom widgets that hardcode AppColors.x directly won't automatically
-  // adapt. Full per-widget dark-mode coverage would need that fuller
-  // approach revisited later if it's ever worth the added complexity.
-  static ThemeData dark() {
-    const darkPrimary = Color(0xFF8B6DFF);
-    const darkSecondary = Color(0xFF9B7FFF);
-    const darkBackground = Color(0xFF121218);
-    const darkSurface = Color(0xFF1C1C24);
-    const darkTextPrimary = Color(0xFFF0F0F5);
-    const darkBorder = Color(0xFF2E2E3A);
-    const darkError = Color(0xFFE57975);
-
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: darkBackground,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: darkPrimary,
-        brightness: Brightness.dark,
-        primary: darkPrimary,
-        secondary: darkSecondary,
-        error: darkError,
-        surface: darkSurface,
-      ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData(brightness: Brightness.dark).textTheme).apply(
-        bodyColor: darkTextPrimary,
-        displayColor: darkTextPrimary,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: darkBackground,
-        foregroundColor: darkTextPrimary,
-        elevation: 0,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: darkTextPrimary,
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: darkPrimary,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.medium),
-          ),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: darkPrimary,
-          side: const BorderSide(color: darkBorder),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.medium),
-          ),
-          textStyle: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: darkSurface,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          side: const BorderSide(color: darkBorder),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: darkSurface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: const BorderSide(color: darkBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: const BorderSide(color: darkBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-          borderSide: const BorderSide(color: darkPrimary, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: darkBorder,
         thickness: 1,
       ),
       pageTransitionsTheme: const PageTransitionsTheme(

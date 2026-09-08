@@ -570,7 +570,7 @@ class _FeedTabState extends State<FeedTab> {
                             borderRadius: BorderRadius.circular(AppRadius.medium),
                             border: Border.all(color: AppColors.border),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Icon(Icons.link_off, size: 16, color: AppColors.textMuted),
                               SizedBox(width: 8),

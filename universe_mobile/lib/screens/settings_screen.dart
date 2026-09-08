@@ -13,6 +13,8 @@ import 'blocked_users_screen.dart';
 import 'delete_account_screen.dart';
 import 'saved_listings_screen.dart';
 import 'change_password_screen.dart';
+import 'theme_screen.dart';
+import '../theme/theme_controller.dart';
 import 'language_screen.dart';
 import 'help_center_screen.dart';
 import 'terms_screen.dart';
@@ -99,6 +101,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'English',
               onTap: () => _push(const LanguageScreen()),
             ),
+            _tile(
+              icon: Icons.dark_mode_outlined,
+              label: 'Theme',
+              subtitle: switch (ThemeController.instance.mode) {
+                ThemeMode.light => 'Light',
+                ThemeMode.dark => 'Dark',
+                ThemeMode.system => 'System default',
+              },
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const ThemeScreen()))
+                  .then((_) => setState(() {})),
+            ),
           ]),
           _sectionLabel('Content'),
           _sectionCard([
@@ -183,7 +197,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
             ),
             child: OutlinedButton.icon(
@@ -262,7 +276,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _sectionCard(List<Widget> tiles) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -270,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           for (int i = 0; i < tiles.length; i++) ...[
             tiles[i],
             if (i != tiles.length - 1)
-              const Divider(height: 1, indent: 56, color: Color(0xFFF0F0F5)),
+              Divider(height: 1, indent: 56, color: AppColors.border),
           ],
         ],
       ),

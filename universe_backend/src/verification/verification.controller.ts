@@ -102,7 +102,7 @@ export class VerificationController {
 
     const { data, error } = await this.supabase.client
       .from('verifications')
-      .select('*')
+      .select('*, universities(name)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -111,6 +111,27 @@ export class VerificationController {
     if (error) {
       return { success: false, error: error.message };
     }
-    return { success: true, verification: data };
+
+    if (!data) {
+      return { success: true, verification: null };
+    }
+
+    // Department isn't captured on the verifications row itself -- it's set
+    // during onboarding on profiles -- so pull it in here for the status
+    // screen rather than making the client stitch two calls together.
+    const { data: profile } = await this.supabase.client
+      .from('profiles')
+      .select('departments(name)')
+      .eq('id', user.id)
+      .single();
+
+    return {
+      success: true,
+      verification: {
+        ...data,
+        universityName: (data.universities as any)?.name ?? null,
+        departmentName: (profile?.departments as any)?.name ?? null,
+      },
+    };
   }
 }

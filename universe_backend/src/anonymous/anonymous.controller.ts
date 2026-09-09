@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
   Patch,
   Post,
+  Query,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -161,13 +163,14 @@ export class AnonymousController {
   @Get('feed')
   async getFeed(
     @Headers('authorization') authHeader: string,
+    @Query('sort') sort?: string, // 'recent' (default) | 'trending'
   ) {
-    await this.getUserFromToken(authHeader);
+    const user = await this.getUserFromToken(authHeader);
 
     const { data, error } = await this.supabase.client
       .from('anonymous_posts')
       .select(
-        '*, anonymous_profiles(anonymous_username)',
+        '*, anonymous_profiles(anonymous_username, avatar_url)',
       )
       .order('created_at', {
         ascending: false,
@@ -180,10 +183,235 @@ export class AnonymousController {
       };
     }
 
+    const posts = data ?? [];
+    const postIds = posts.map((p: any) => p.id);
+    let reactionCounts: Record<string, number> = {};
+    let myReactedIds = new Set<string>();
+
+    if (postIds.length > 0) {
+      const { data: reactions } = await this.supabase.client
+        .from('anonymous_post_reactions')
+        .select('post_id, user_id')
+        .in('post_id', postIds);
+
+      reactions?.forEach((r) => {
+        reactionCounts[r.post_id] = (reactionCounts[r.post_id] ?? 0) + 1;
+        if (r.user_id === user.id) myReactedIds.add(r.post_id);
+      });
+
+      const { data: saved } = await this.supabase.client
+        .from('saved_anonymous_posts')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .in('post_id', postIds);
+      var savedSet = new Set((saved ?? []).map((s) => s.post_id));
+    } else {
+      var savedSet = new Set<string>();
+    }
+
+    let enriched = posts.map((p: any) => ({
+      ...p,
+      reactionCount: reactionCounts[p.id] ?? 0,
+      hasReacted: myReactedIds.has(p.id),
+      isSaved: savedSet.has(p.id),
+    }));
+
+    if (sort === 'trending') {
+      // Trending = engagement-weighted over a recent window, matching the
+      // same approach as the regular feed's Trending screen -- here that's
+      // reaction count within the last 7 days, since anonymous posts don't
+      // carry the tag-based trending model posts.tags does.
+      const since = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      enriched = enriched
+        .filter((p: any) => new Date(p.created_at).getTime() >= since)
+        .sort((a: any, b: any) => b.reactionCount - a.reactionCount);
+    }
+
     return {
       success: true,
-      posts: data,
+      posts: enriched,
     };
+  }
+
+  @Post('posts/:id/react')
+  async togglePostReaction(@Headers('authorization') authHeader: string, @Param('id') postId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('anonymous_post_reactions')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await this.supabase.client.from('anonymous_post_reactions').delete().eq('id', existing.id);
+      return { success: true, reacted: false };
+    } else {
+      await this.supabase.client.from('anonymous_post_reactions').insert({ post_id: postId, user_id: user.id });
+      return { success: true, reacted: true };
+    }
+  }
+
+  @Post('posts/:id/save')
+  async toggleSavePost(@Headers('authorization') authHeader: string, @Param('id') postId: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: existing } = await this.supabase.client
+      .from('saved_anonymous_posts')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await this.supabase.client.from('saved_anonymous_posts').delete().eq('id', existing.id);
+      return { success: true, saved: false };
+    } else {
+      await this.supabase.client.from('saved_anonymous_posts').insert({ post_id: postId, user_id: user.id });
+      return { success: true, saved: true };
+    }
+  }
+
+  @Get('saved')
+  async getSavedPosts(@Headers('authorization') authHeader: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data, error } = await this.supabase.client
+      .from('saved_anonymous_posts')
+      .select('created_at, anonymous_posts(*, anonymous_profiles(anonymous_username, avatar_url))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, posts: (data ?? []).map((s: any) => s.anonymous_posts).filter(Boolean) };
+  }
+
+  @Post('posts/:id/reshare')
+  async reshare(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: original, error: fetchError } = await this.supabase.client
+      .from('anonymous_posts')
+      .select('id, reposted_post_id, category')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !original) {
+      return { success: false, error: 'Original post not found' };
+    }
+    if (original.reposted_post_id) {
+      // Same one-level cap as the regular feed's reshare -- always point at
+      // the true original, never chain reshares of reshares.
+      return { success: false, error: 'Cannot reshare a repost -- share the original post instead' };
+    }
+
+    const { data: anonProfile } = await this.supabase.client
+      .from('anonymous_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!anonProfile) {
+      return { success: false, error: 'Create an anonymous identity first' };
+    }
+
+    const { data, error } = await this.supabase.client
+      .from('anonymous_posts')
+      .insert({
+        anonymous_profile_id: anonProfile.id,
+        content: '',
+        category: original.category,
+        reposted_post_id: original.id,
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, post: data };
+  }
+
+  @Post('polls')
+  async createPoll(
+    @Headers('authorization') authHeader: string,
+    @Body() body: { anonymousPostId: string; question: string; options: string[] },
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+
+    if (!body.question?.trim() || !body.options || body.options.length < 2) {
+      return { success: false, error: 'A question and at least 2 options are required' };
+    }
+
+    const { data: anonProfile } = await this.supabase.client
+      .from('anonymous_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!anonProfile) {
+      return { success: false, error: 'Create an anonymous identity first' };
+    }
+
+    const { data: post } = await this.supabase.client
+      .from('anonymous_posts')
+      .select('id, anonymous_profile_id')
+      .eq('id', body.anonymousPostId)
+      .single();
+
+    if (!post || post.anonymous_profile_id !== anonProfile.id) {
+      return { success: false, error: 'You can only attach a poll to your own post' };
+    }
+
+    const { data, error } = await this.supabase.client
+      .from('polls')
+      .insert({
+        anonymous_post_id: body.anonymousPostId,
+        question: body.question.trim(),
+        options: body.options.map((o) => o.trim()).filter(Boolean),
+      })
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, poll: data };
+  }
+
+  @Post('polls/:id/vote')
+  async votePoll(
+    @Headers('authorization') authHeader: string,
+    @Param('id') pollId: string,
+    @Body() body: { optionIndex: number },
+  ) {
+    const user = await this.getUserFromToken(authHeader);
+
+    const { data: poll } = await this.supabase.client
+      .from('polls')
+      .select('options')
+      .eq('id', pollId)
+      .single();
+
+    if (!poll || body.optionIndex < 0 || body.optionIndex >= poll.options.length) {
+      return { success: false, error: 'Invalid poll or option' };
+    }
+
+    const { error } = await this.supabase.client
+      .from('poll_votes')
+      .upsert(
+        { poll_id: pollId, user_id: user.id, option_index: body.optionIndex },
+        { onConflict: 'poll_id,user_id' },
+      );
+
+    if (error) return { success: false, error: error.message };
+
+    const { data: allVotes } = await this.supabase.client
+      .from('poll_votes')
+      .select('option_index')
+      .eq('poll_id', pollId);
+
+    const counts = new Array(poll.options.length).fill(0);
+    (allVotes ?? []).forEach((v) => counts[v.option_index]++);
+
+    return { success: true, counts, myVote: body.optionIndex };
   }
 
   // 5 anonymous posts per minute

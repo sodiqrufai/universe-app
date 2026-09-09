@@ -632,6 +632,54 @@ export class AdminController {
     return { success: true, verifications: data };
   }
 
+  @Get('verifications/approved')
+  async getApproved(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
+    await this.getAdminFromToken(authHeader);
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 25));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
+
+    const { data, error, count } = await this.supabase.client
+      .from('verifications')
+      .select('*, universities(name)', { count: 'exact' })
+      .eq('status', 'approved')
+      .order('reviewed_at', { ascending: false })
+      .range(from, to);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, verifications: data, total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Get('verifications/rejected')
+  async getRejected(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
+    await this.getAdminFromToken(authHeader);
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 25));
+    const from = (pageNum - 1) * size;
+    const to = from + size - 1;
+
+    const { data, error, count } = await this.supabase.client
+      .from('verifications')
+      .select('*, universities(name)', { count: 'exact' })
+      .eq('status', 'rejected')
+      .order('reviewed_at', { ascending: false })
+      .range(from, to);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, verifications: data, total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
   @Get('verifications/:id/document-url')
   async getDocumentUrl(@Headers('authorization') authHeader: string, @Param('id') id: string) {
     await this.getAdminFromToken(authHeader);

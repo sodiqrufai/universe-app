@@ -187,6 +187,7 @@ export class AnonymousController {
     const postIds = posts.map((p: any) => p.id);
     let reactionCounts: Record<string, number> = {};
     let myReactedIds = new Set<string>();
+    let savedSet = new Set<string>();
 
     if (postIds.length > 0) {
       const { data: reactions } = await this.supabase.client
@@ -204,9 +205,7 @@ export class AnonymousController {
         .select('post_id')
         .eq('user_id', user.id)
         .in('post_id', postIds);
-      var savedSet = new Set((saved ?? []).map((s) => s.post_id));
-    } else {
-      var savedSet = new Set<string>();
+      savedSet = new Set((saved ?? []).map((s): string => s.post_id));
     }
 
     // Polls weren't joined into the feed query at all -- without this,

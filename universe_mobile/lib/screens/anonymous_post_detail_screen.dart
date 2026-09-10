@@ -88,6 +88,34 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
     _commentFocusNode.requestFocus();
   }
 
+  // Post-level like — the feed card already has this
+  // (anonymous_tab.dart's _toggleReaction), but the detail screen
+  // never got a matching control, so tapping into a post left no way
+  // to like it, only to react to comments underneath it.
+  Future<void> _togglePostReaction() async {
+    final wasReacted = widget.post['hasReacted'] == true;
+    setState(() {
+      widget.post['hasReacted'] = !wasReacted;
+      widget.post['reactionCount'] = (widget.post['reactionCount'] ?? 0) + (wasReacted ? -1 : 1);
+    });
+    try {
+      final data = await ApiService.post('/anonymous/posts/${widget.post['id']}/react', {});
+      if (data['success'] != true && mounted) {
+        setState(() {
+          widget.post['hasReacted'] = wasReacted;
+          widget.post['reactionCount'] = (widget.post['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          widget.post['hasReacted'] = wasReacted;
+          widget.post['reactionCount'] = (widget.post['reactionCount'] ?? 0) + (wasReacted ? 1 : -1);
+        });
+      }
+    }
+  }
+
   Future<void> _toggleCommentReaction(dynamic comment) async {
     final wasReacted = comment['hasReacted'] == true;
     setState(() {
@@ -216,6 +244,28 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _togglePostReaction,
+                  child: Semantics(
+                    label: widget.post['hasReacted'] == true ? 'Unlike this post' : 'Like this post',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.post['hasReacted'] == true ? Icons.favorite : Icons.favorite_border,
+                          size: 20,
+                          color: widget.post['hasReacted'] == true ? Colors.red : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${widget.post['reactionCount'] ?? 0}',
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const Divider(height: 32),
                 const Text('Comments', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: AppSpacing.md),

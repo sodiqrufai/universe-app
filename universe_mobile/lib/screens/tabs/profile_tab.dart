@@ -5,7 +5,7 @@ import '../../services/session_service.dart';
 import '../../widgets/state_views.dart';
 import '../edit_profile_screen.dart';
 import '../login_screen.dart';
-import '../verification_screen.dart';
+import '../verification_status_screen.dart';
 import '../my_posts_screen.dart';
 import '../saved_listings_screen.dart';
 import '../my_bookings_screen.dart';
@@ -138,7 +138,7 @@ class _ProfileTabState extends State<ProfileTab> {
           _buildShortcut(
             icon: Icons.verified_user_outlined,
             label: 'Verification',
-            onTap: () => _push(const VerificationScreen()),
+            onTap: () => _push(const VerificationStatusScreen()),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -265,7 +265,7 @@ class _ProfileTabState extends State<ProfileTab> {
           if (!isVerified) ...[
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: () => _push(const VerificationScreen()),
+              onTap: () => _push(const VerificationStatusScreen()),
               child: const Text(
                 'Get verified →',
                 style: TextStyle(

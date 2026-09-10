@@ -7,6 +7,8 @@ import Link from 'next/link';
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
   { href: '/dashboard/verifications', label: 'Verifications', icon: '✅' },
+  { href: '/dashboard/verifications/approved', label: 'Approved Verifications', icon: '✔️' },
+  { href: '/dashboard/verifications/rejected', label: 'Rejected Verifications', icon: '✖️' },
   { href: '/dashboard/students', label: 'Students', icon: '👥' },
   { href: '/dashboard/reports', label: 'Reports & Moderation', icon: '🚩' },
   { href: '/dashboard/universities', label: 'Universities', icon: '🏫' },

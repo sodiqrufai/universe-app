@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/state_views.dart';
+import '../../utils/relative_time.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
 import '../trending_screen.dart';
@@ -517,6 +518,11 @@ class _FeedTabState extends State<FeedTab> {
                           const SizedBox(width: 4),
                           Icon(Icons.verified, size: 14, color: AppColors.primary),
                         ],
+                        const SizedBox(width: 6),
+                        Text(
+                          '\u00b7 ${formatRelativeTimeFromString(post['created_at'])}',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
                       ],
                     ),
                   ),
@@ -570,7 +576,7 @@ class _FeedTabState extends State<FeedTab> {
                             borderRadius: BorderRadius.circular(AppRadius.medium),
                             border: Border.all(color: AppColors.border),
                           ),
-                          child: Row(
+                          child: const Row(
                             children: [
                               Icon(Icons.link_off, size: 16, color: AppColors.textMuted),
                               SizedBox(width: 8),

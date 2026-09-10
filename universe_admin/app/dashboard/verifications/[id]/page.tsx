@@ -18,6 +18,7 @@ export default function VerificationDetailPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,14 +144,14 @@ export default function VerificationDetailPage() {
 
         {error && <p className="text-error mb-4">{error}</p>}
 
-        {!showRejectBox ? (
+        {!showRejectBox && !showApproveConfirm ? (
           <div className="flex gap-3">
             <button
-              onClick={handleApprove}
+              onClick={() => setShowApproveConfirm(true)}
               disabled={processing}
               className="flex-1 bg-success text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50 transition"
             >
-              {processing ? 'Processing...' : 'Approve'}
+              Approve
             </button>
             <button
               onClick={() => setShowRejectBox(true)}
@@ -159,6 +160,26 @@ export default function VerificationDetailPage() {
             >
               Reject
             </button>
+          </div>
+        ) : showApproveConfirm ? (
+          <div>
+            <p className="text-foreground mb-3">Approve this verification? The student will be marked as a verified student.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleApprove}
+                disabled={processing}
+                className="flex-1 bg-success text-white rounded-lg py-2 font-semibold hover:opacity-90 disabled:opacity-50 transition"
+              >
+                {processing ? 'Processing...' : 'Confirm Approval'}
+              </button>
+              <button
+                onClick={() => setShowApproveConfirm(false)}
+                disabled={processing}
+                className="flex-1 bg-light-purple text-foreground rounded-lg py-2 font-semibold hover:opacity-80 transition"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         ) : (
           <div>

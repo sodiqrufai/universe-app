@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
-import 'verification_screen.dart';
+import 'verification_status_screen.dart';
 import 'my_posts_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'notification_settings_screen.dart';
@@ -84,7 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Account Verification',
               subtitle: 'View verification status',
               trailing: _verificationBadge(),
-              onTap: () => _push(const VerificationScreen()),
+              onTap: () => _push(const VerificationStatusScreen()),
             ),
             _tile(
               icon: Icons.lock_outline,

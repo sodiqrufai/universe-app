@@ -209,11 +209,52 @@ export class AnonymousController {
       var savedSet = new Set<string>();
     }
 
+    // Polls weren't joined into the feed query at all -- without this,
+    // there's no way to render voting UI on a post card, since the poll's
+    // question/options/live counts/my-vote never reach the client. Fetched
+    // as a second pass keyed by anonymous_post_id, same pattern as
+    // reactions/saved above rather than a nested select (polls references
+    // anonymous_post_id, not the other way round, so it can't be embedded
+    // via a simple foreign-table select).
+    let pollsByPost: Record<string, any> = {};
+    if (postIds.length > 0) {
+      const { data: polls } = await this.supabase.client
+        .from('polls')
+        .select('id, anonymous_post_id, question, options')
+        .in('anonymous_post_id', postIds);
+
+      if (polls && polls.length > 0) {
+        const pollIds = polls.map((p) => p.id);
+        const { data: votes } = await this.supabase.client
+          .from('poll_votes')
+          .select('poll_id, user_id, option_index')
+          .in('poll_id', pollIds);
+
+        polls.forEach((poll) => {
+          const pollVotes = (votes ?? []).filter((v) => v.poll_id === poll.id);
+          const counts = new Array(poll.options.length).fill(0);
+          let myVote: number | null = null;
+          pollVotes.forEach((v) => {
+            counts[v.option_index]++;
+            if (v.user_id === user.id) myVote = v.option_index;
+          });
+          pollsByPost[poll.anonymous_post_id] = {
+            id: poll.id,
+            question: poll.question,
+            options: poll.options,
+            counts,
+            myVote,
+          };
+        });
+      }
+    }
+
     let enriched = posts.map((p: any) => ({
       ...p,
       reactionCount: reactionCounts[p.id] ?? 0,
       hasReacted: myReactedIds.has(p.id),
       isSaved: savedSet.has(p.id),
+      poll: pollsByPost[p.id] ?? null,
     }));
 
     if (sort === 'trending') {
@@ -467,7 +508,7 @@ export class AnonymousController {
           category,
         })
         .select(
-          '*, anonymous_profiles(anonymous_username)',
+          '*, anonymous_profiles(anonymous_username, avatar_url)',
         )
         .single();
 
@@ -495,7 +536,7 @@ export class AnonymousController {
       await this.supabase.client
         .from('anonymous_comments')
         .select(
-          '*, anonymous_profiles(anonymous_username)',
+          '*, anonymous_profiles(anonymous_username, avatar_url)',
         )
         .eq('anonymous_post_id', id)
         .order('created_at', {
@@ -612,7 +653,7 @@ export class AnonymousController {
           parent_comment_id: body.parentCommentId ?? null,
         })
         .select(
-          '*, anonymous_profiles(anonymous_username)',
+          '*, anonymous_profiles(anonymous_username, avatar_url)',
         )
         .single();
 

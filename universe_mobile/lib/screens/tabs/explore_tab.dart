@@ -436,6 +436,7 @@ class _ExploreTabState extends State<ExploreTab> {
         onRefresh: _fetchAll,
         color: AppColors.primary,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(height: 100),
             Center(child: Text('Nothing here yet — check back soon.')),
@@ -447,6 +448,7 @@ class _ExploreTabState extends State<ExploreTab> {
       onRefresh: _fetchAll,
       color: AppColors.primary,
       child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         controller: _scrollController,
         slivers: [
           SliverPadding(

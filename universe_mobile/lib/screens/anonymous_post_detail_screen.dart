@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../widgets/app_image.dart';
+import '../utils/relative_time.dart';
 
 class AnonymousPostDetailScreen extends StatefulWidget {
   final dynamic post;
@@ -169,8 +171,9 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final username =
-        widget.post['anonymous_profiles']?['anonymous_username'] ?? 'anonymous';
+    final anonProfile = widget.post['anonymous_profiles'];
+    final username = anonProfile?['anonymous_username'] ?? 'anonymous';
+    final avatarUrl = anonProfile?['avatar_url'];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Anonymous Post'),
@@ -188,9 +191,28 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                Text(
-                  '@$username',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                Row(
+                  children: [
+                    ClipOval(
+                      child: avatarUrl != null
+                          ? AppNetworkImage(avatarUrl, width: 28, height: 28, fit: BoxFit.cover)
+                          : CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppColors.lightPurple,
+                              child: Icon(Icons.masks_outlined, size: 14, color: AppColors.primary),
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '@$username',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '\u00b7 ${formatRelativeTimeFromString(widget.post['created_at'])}',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(widget.post['content'], style: const TextStyle(fontSize: 15)),
@@ -321,19 +343,35 @@ class _AnonymousPostDetailScreenState extends State<AnonymousPostDetailScreen> {
 
   Widget _buildCommentRow(dynamic c, {required bool isReply}) {
     final cUsername = c['anonymous_profiles']?['anonymous_username'] ?? 'anonymous';
+    final cAvatarUrl = c['anonymous_profiles']?['avatar_url'];
     final hasReacted = c['hasReacted'] == true;
     final reactionCount = c['reactionCount'] ?? 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '@$cUsername',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
-          ),
+        Row(
+          children: [
+            ClipOval(
+              child: cAvatarUrl != null
+                  ? AppNetworkImage(cAvatarUrl, width: isReply ? 18 : 20, height: isReply ? 18 : 20, fit: BoxFit.cover)
+                  : CircleAvatar(
+                      radius: isReply ? 9 : 10,
+                      backgroundColor: AppColors.lightPurple,
+                      child: Icon(Icons.masks_outlined, size: isReply ? 9 : 10, color: AppColors.primary),
+                    ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '@$cUsername',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 2),
         Text(c['content'], style: const TextStyle(fontSize: 13)),
         const SizedBox(height: 4),
         Row(

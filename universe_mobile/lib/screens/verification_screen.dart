@@ -9,7 +9,17 @@ import '../services/session_service.dart';
 import '../services/api_service.dart';
 
 class VerificationScreen extends StatefulWidget {
-  const VerificationScreen({super.key});
+  // isReupload only changes the confirmation copy shown on success.
+  // onSubmitted is used when this screen is embedded directly (the
+  // never-submitted case, not pushed as its own route) -- there's nothing
+  // to Navigator.pop back to in that case, so the parent needs a callback
+  // instead to know when to refresh. When this screen IS pushed as its own
+  // route (the reupload case), it still also pops with `true` so callers
+  // using the push-based pattern keep working.
+  final bool isReupload;
+  final VoidCallback? onSubmitted;
+
+  const VerificationScreen({super.key, this.isReupload = false, this.onSubmitted});
 
   @override
   State<VerificationScreen> createState() => _VerificationScreenState();
@@ -85,7 +95,35 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
       if (data['success'] == true) {
         if (mounted) {
-          Navigator.of(context).pop(true);
+          await showDialog<void>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              icon: Icon(Icons.check_circle, color: AppColors.success, size: 40),
+              title: Text(widget.isReupload ? 'Verification resubmitted' : 'Submitted!'),
+              content: Text(
+                widget.isReupload
+                    ? 'Your document has been resubmitted and is back under review.'
+                    : 'Your student ID has been submitted and is now under review.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+          if (!mounted) return;
+          widget.onSubmitted?.call();
+          // Only pop when this screen was pushed as its own route (the
+          // profile/settings entry points, and the reupload flow). When
+          // embedded directly as VerificationStatusScreen's body (the
+          // never-submitted case), onSubmitted is how the parent finds out
+          // instead -- popping here would incorrectly close the parent
+          // screen entirely rather than just refreshing its content.
+          if (widget.onSubmitted == null && mounted) {
+            Navigator.of(context).pop(true);
+          }
         }
       } else {
         setState(() {
@@ -130,9 +168,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Upload your student ID to unlock the verified badge and full platform access.',
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
             TextField(
@@ -191,7 +229,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                child: Text(_error!, style: TextStyle(color: AppColors.error)),
               ),
             ElevatedButton(
               onPressed: _submitting ? null : _submit,

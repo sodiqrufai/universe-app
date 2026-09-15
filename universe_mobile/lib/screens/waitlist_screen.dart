@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../models/profile_setup_data.dart';
 import 'university_selector_screen.dart';
 import 'waitlist_holding_screen.dart';
 
@@ -10,7 +11,12 @@ import 'waitlist_holding_screen.dart';
 /// is just checking back in on a later app launch.
 class WaitlistScreen extends StatefulWidget {
   final University university;
-  const WaitlistScreen({super.key, required this.university});
+  final ProfileSetupData setupData;
+  const WaitlistScreen({
+    super.key,
+    required this.university,
+    this.setupData = const ProfileSetupData(),
+  });
 
   @override
   State<WaitlistScreen> createState() => _WaitlistScreenState();
@@ -33,7 +39,10 @@ class _WaitlistScreenState extends State<WaitlistScreen> {
       if (data['success'] == true) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => WaitlistHoldingScreen(universityName: widget.university.name),
+            builder: (_) => WaitlistHoldingScreen(
+              universityName: widget.university.name,
+              setupData: widget.setupData,
+            ),
           ),
         );
       } else {

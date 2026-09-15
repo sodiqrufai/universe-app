@@ -121,37 +121,113 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
       body: IndexedStack(index: _currentIndex, children: _tabs),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textMuted,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dynamic_feed_outlined),
-            activeIcon: Icon(Icons.dynamic_feed),
-            label: 'Feed',
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _navItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final selected = _currentIndex == index;
+    final color = selected ? AppColors.primary : AppColors.textMuted;
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _currentIndex = index),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(selected ? activeIcon : icon, color: color, size: 24),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(color: color, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Feed/Explore/Anonymous/Profile sit in a regular flat bar, same as
+  /// before. Messages (the center slot) is raised out of the bar as a
+  /// solid gold circle instead, matching the brand board's floating
+  /// center action — still a normal tab switch underneath, not a
+  /// separate action, just styled to match.
+  Widget _buildBottomNav() {
+    final anonymousSelected = _currentIndex == 3;
+    return SizedBox(
+      height: 78,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  _navItem(
+                    index: 0,
+                    icon: Icons.dynamic_feed_outlined,
+                    activeIcon: Icons.dynamic_feed,
+                    label: 'Feed',
+                  ),
+                  _navItem(
+                    index: 1,
+                    icon: Icons.explore_outlined,
+                    activeIcon: Icons.explore,
+                    label: 'Explore',
+                  ),
+                  const Expanded(child: SizedBox()),
+                  _navItem(
+                    index: 2,
+                    icon: Icons.chat_bubble_outline,
+                    activeIcon: Icons.chat_bubble,
+                    label: 'Messages',
+                  ),
+                  _navItem(
+                    index: 4,
+                    icon: Icons.person_outline,
+                    activeIcon: Icons.person,
+                    label: 'Profile',
+                  ),
+                ],
+              ),
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Messages',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.masks_outlined),
-            activeIcon: Icon(Icons.masks),
-            label: 'Anonymous',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
+          Positioned(
+            top: 0,
+            child: GestureDetector(
+              onTap: () => setState(() => _currentIndex = 3),
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.background, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  anonymousSelected ? Icons.masks : Icons.masks_outlined,
+                  color: Colors.white,
+                  size: 26,
+                ),
+              ),
+            ),
           ),
         ],
       ),

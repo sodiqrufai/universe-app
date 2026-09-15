@@ -125,7 +125,20 @@ export class AuthController {
 
   @Post('reset-password')
   async resetPassword(@Body() body: { email: string }) {
-    const { error } = await this.getAuthClient().auth.resetPasswordForEmail(body.email);
+    // Previously called with no redirectTo at all, which silently falls
+    // back to whatever Supabase's dashboard "Site URL" is set to --
+    // reported bug was that link pointing at localhost, because that
+    // dashboard setting was still on its default placeholder value.
+    // Making this explicit here doesn't fix the underlying dashboard
+    // setting (that's a Supabase Auth > URL Configuration change only
+    // someone with dashboard access can make), but it stops a second,
+    // separate cause of the same symptom: this code silently depending
+    // on that setting being right, with no visible link between the two.
+    const redirectUrl = this.config.get<string>('PASSWORD_RESET_REDIRECT_URL');
+    const { error } = await this.getAuthClient().auth.resetPasswordForEmail(
+      body.email,
+      redirectUrl ? { redirectTo: redirectUrl } : undefined,
+    );
 
     if (error) {
       return { success: false, error: error.message };

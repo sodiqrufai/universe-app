@@ -109,7 +109,9 @@ class _UniversitySelectorScreenState extends State<UniversitySelectorScreen> {
   Future<void> _select(University u) async {
     if (!u.isPilot) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => WaitlistScreen(university: u)),
+        MaterialPageRoute(
+          builder: (_) => WaitlistScreen(university: u, setupData: widget.setupData),
+        ),
       );
       return;
     }

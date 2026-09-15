@@ -31,8 +31,150 @@
 
   <title>UniVerse</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    #install-banner {
+      display: none;
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 9999;
+      background: #172554;
+      color: #F8FAFC;
+      border-radius: 14px;
+      padding: 14px;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(7, 11, 26, 0.35);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #install-banner img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    #install-banner .install-body {
+      flex: 1;
+      min-width: 0;
+    }
+    #install-banner .install-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin: 0 0 2px 0;
+    }
+    #install-banner .install-subtitle {
+      font-size: 12px;
+      color: #94A3B8;
+      margin: 0;
+    }
+    #install-btn {
+      background: #F5B942;
+      color: #070B1A;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    #install-dismiss {
+      background: none;
+      border: none;
+      color: #94A3B8;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+  </style>
 </head>
 <body>
+  <!--
+    Custom install banner — Android/Chrome gets a real Install button
+    (via the captured beforeinstallprompt event); iOS Safari never
+    fires that event at all (no such API exists there), so it gets
+    manual "Add to Home Screen" instructions instead. Both dismiss
+    permanently, and both hide automatically once actually installed.
+  -->
+  <div id="install-banner">
+    <img src="icons/Icon-192.png" alt="UniVerse">
+    <div class="install-body">
+      <p class="install-title">Install the UniVerse app</p>
+      <p class="install-subtitle" id="install-subtitle">Get quick, full-screen access from your home screen.</p>
+    </div>
+    <button id="install-btn">Install</button>
+    <button id="install-dismiss" aria-label="Dismiss">&times;</button>
+  </div>
+  <script>
+    (function () {
+      var LS_KEY = 'universe_install_banner_dismissed';
+      var banner = document.getElementById('install-banner');
+      var installBtn = document.getElementById('install-btn');
+      var subtitle = document.getElementById('install-subtitle');
+      var dismissBtn = document.getElementById('install-dismiss');
+      var deferredPrompt = null;
+
+      function isStandalone() {
+        return window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true;
+      }
+
+      function isIOS() {
+        return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !window.MSStream;
+      }
+
+      function alreadyDismissed() {
+        return localStorage.getItem(LS_KEY) === '1';
+      }
+
+      function dismiss() {
+        banner.style.display = 'none';
+        localStorage.setItem(LS_KEY, '1');
+      }
+
+      function showBanner() {
+        if (isStandalone() || alreadyDismissed()) return;
+        banner.style.display = 'flex';
+      }
+
+      if (isIOS()) {
+        // No install API exists on iOS Safari at all -- this is the
+        // only path onto a home screen there, so show it directly
+        // instead of waiting for an event that will never fire.
+        installBtn.style.display = 'none';
+        subtitle.textContent = 'Tap the Share icon, then "Add to Home Screen".';
+        showBanner();
+      } else {
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          showBanner();
+        });
+      }
+
+      installBtn.addEventListener('click', function () {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function () {
+          deferredPrompt = null;
+          banner.style.display = 'none';
+        });
+      });
+
+      dismissBtn.addEventListener('click', dismiss);
+
+      // Fires on Android/Chrome once the install actually completes.
+      // iOS has no equivalent event -- there, isStandalone() catches
+      // it correctly on the user's next visit after they've installed.
+      window.addEventListener('appinstalled', dismiss);
+    })();
+  </script>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

@@ -10,6 +10,7 @@ type University = {
   city: string | null;
   country: string | null;
   ownership_type: string | null;
+  is_pilot: boolean;
 };
 
 const emptyForm = { name: '', shortName: '', city: '', country: 'Nigeria', ownershipType: 'private' };
@@ -22,6 +23,7 @@ export default function UniversitiesPage() {
   const [editing, setEditing] = useState<University | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUniversities();
@@ -97,6 +99,27 @@ export default function UniversitiesPage() {
     }
   };
 
+  const togglePilot = async (u: University) => {
+    const next = !u.is_pilot;
+    setTogglingId(u.id);
+    // Optimistic — reuses the existing generic PATCH /admin/universities/:id
+    // endpoint (it already takes any partial body), no new endpoint needed
+    // for this.
+    setUniversities((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_pilot: next } : x)));
+    try {
+      const data = await adminApi.patch(`/admin/universities/${u.id}`, { is_pilot: next });
+      if (!data.success) {
+        setUniversities((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_pilot: !next } : x)));
+        setError(data.error || 'Could not update live access');
+      }
+    } catch {
+      setUniversities((prev) => prev.map((x) => (x.id === u.id ? { ...x, is_pilot: !next } : x)));
+      setError('Could not update live access');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-1">
@@ -128,6 +151,7 @@ export default function UniversitiesPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">City</th>
                 <th className="px-4 py-3 font-medium">Ownership</th>
+                <th className="px-4 py-3 font-medium">Live Access</th>
                 <th className="px-4 py-3 font-medium text-right">Action</th>
               </tr>
             </thead>
@@ -140,6 +164,26 @@ export default function UniversitiesPage() {
                   </td>
                   <td className="px-4 py-3 text-text-secondary">{u.city ?? '—'}</td>
                   <td className="px-4 py-3 text-text-secondary capitalize">{u.ownership_type ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => togglePilot(u)}
+                      disabled={togglingId === u.id}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-50 ${
+                        u.is_pilot ? 'bg-primary' : 'bg-border'
+                      }`}
+                      aria-label={u.is_pilot ? 'Live — students can sign up directly' : 'Waitlisted — students get put on a waitlist'}
+                      title={u.is_pilot ? 'Live — students can sign up directly' : 'Waitlisted — students get put on a waitlist'}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                          u.is_pilot ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <span className="ml-2 text-xs text-text-secondary align-middle">
+                      {u.is_pilot ? 'Live' : 'Waitlisted'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => openEdit(u)} className="text-xs font-semibold text-primary underline">
                       Edit

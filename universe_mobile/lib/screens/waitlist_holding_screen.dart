@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../models/profile_setup_data.dart';
 import 'login_screen.dart';
 import 'university_selector_screen.dart';
 
@@ -13,7 +14,12 @@ import 'university_selector_screen.dart';
 /// gotten past this by design, not stuck due to a bug.
 class WaitlistHoldingScreen extends StatefulWidget {
   final String universityName;
-  const WaitlistHoldingScreen({super.key, required this.universityName});
+  final ProfileSetupData setupData;
+  const WaitlistHoldingScreen({
+    super.key,
+    required this.universityName,
+    this.setupData = const ProfileSetupData(),
+  });
 
   @override
   State<WaitlistHoldingScreen> createState() => _WaitlistHoldingScreenState();
@@ -44,8 +50,16 @@ class _WaitlistHoldingScreenState extends State<WaitlistHoldingScreen> {
     final data = await ApiService.delete('/waitlist/leave');
     if (!mounted) return;
     if (data['success'] == true) {
+      // Same-session case: pass the username/bio the user already chose
+      // back into University selection rather than a blank one — the
+      // whole reason this screen accepts setupData in the first place.
+      // A cold app restart genuinely has no in-memory data left to carry
+      // (that's a separate, smaller case: re-entering after actually
+      // closing the app, not a duplicate prompt within one sitting).
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const UniversitySelectorScreen()),
+        MaterialPageRoute(
+          builder: (_) => UniversitySelectorScreen(setupData: widget.setupData),
+        ),
         (route) => false,
       );
     } else {

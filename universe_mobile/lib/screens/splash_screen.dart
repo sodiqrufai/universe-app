@@ -168,11 +168,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
+        gradient: AppColors.splashGradient,
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -183,7 +179,19 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const UniVerseLogo(size: 120, badge: true),
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            blurRadius: 48,
+                            spreadRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const UniVerseLogo(size: 132, badge: true),
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       'UniVerse',
@@ -198,7 +206,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       text: TextSpan(
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.white70,
+                          color: Color(0xFFE4DEFF),
                         ),
                         children: [
                           const TextSpan(text: 'One App. '),

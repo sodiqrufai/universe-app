@@ -56,6 +56,21 @@ class AppColors {
   static Color get info =>
       _isDark ? const Color(0xFF6E9BFF) : const Color(0xFF4A7FE5);
 
+  // Brand gradients — fixed deep purples that do NOT change with the theme,
+  // so hero surfaces (splash, profile header, banners) always show the real
+  // UniVerse purple instead of the lighter dark-mode primary.
+  static const LinearGradient brandGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF4F2CCF), Color(0xFF2D1B8C)],
+  );
+  static const LinearGradient splashGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF1B1160), Color(0xFF2D1B8C), Color(0xFF4F2CCF)],
+    stops: [0.0, 0.5, 1.0],
+  );
+
   // Kept as an alias so existing screens using AppColors.accent
   // (badges, highlights) keep working without a find-and-replace;
   // maps to warning, the closest token in the new system.

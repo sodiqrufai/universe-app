@@ -397,11 +397,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryDark],
-        ),
+        gradient: AppColors.brandGradient,
         borderRadius: BorderRadius.circular(AppRadius.large),
       ),
       child: Row(

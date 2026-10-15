@@ -148,88 +148,53 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  /// Feed/Explore/Anonymous/Profile sit in a regular flat bar, same as
-  /// before. Messages (the center slot) is raised out of the bar as a
-  /// solid gold circle instead, matching the brand board's floating
-  /// center action — still a normal tab switch underneath, not a
-  /// separate action, just styled to match.
+  /// Standard five-tab bottom bar: Feed / Explore / Messages / Anonymous /
+  /// Profile, all equal width, active tab in brand purple.
   Widget _buildBottomNav() {
-    final anonymousSelected = _currentIndex == 3;
-    return SizedBox(
-      height: 78,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.topCenter,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              height: 64,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(top: BorderSide(color: AppColors.border)),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              _navItem(
+                index: 0,
+                icon: Icons.dynamic_feed_outlined,
+                activeIcon: Icons.dynamic_feed,
+                label: 'Feed',
               ),
-              child: Row(
-                children: [
-                  _navItem(
-                    index: 0,
-                    icon: Icons.dynamic_feed_outlined,
-                    activeIcon: Icons.dynamic_feed,
-                    label: 'Feed',
-                  ),
-                  _navItem(
-                    index: 1,
-                    icon: Icons.explore_outlined,
-                    activeIcon: Icons.explore,
-                    label: 'Explore',
-                  ),
-                  const Expanded(child: SizedBox()),
-                  _navItem(
-                    index: 2,
-                    icon: Icons.chat_bubble_outline,
-                    activeIcon: Icons.chat_bubble,
-                    label: 'Messages',
-                  ),
-                  _navItem(
-                    index: 4,
-                    icon: Icons.person_outline,
-                    activeIcon: Icons.person,
-                    label: 'Profile',
-                  ),
-                ],
+              _navItem(
+                index: 1,
+                icon: Icons.explore_outlined,
+                activeIcon: Icons.explore,
+                label: 'Explore',
               ),
-            ),
+              _navItem(
+                index: 2,
+                icon: Icons.chat_bubble_outline,
+                activeIcon: Icons.chat_bubble,
+                label: 'Messages',
+              ),
+              _navItem(
+                index: 3,
+                icon: Icons.masks_outlined,
+                activeIcon: Icons.masks,
+                label: 'Anonymous',
+              ),
+              _navItem(
+                index: 4,
+                icon: Icons.person_outline,
+                activeIcon: Icons.person,
+                label: 'Profile',
+              ),
+            ],
           ),
-          Positioned(
-            top: 0,
-            child: GestureDetector(
-              onTap: () => setState(() => _currentIndex = 3),
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.background, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  anonymousSelected ? Icons.masks : Icons.masks_outlined,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

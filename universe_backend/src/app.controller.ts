@@ -10,9 +10,10 @@ export class AppController {
     private readonly supabase: SupabaseService,
   ) {}
 
+  // Health check for Render / uptime pings (the old "Hello World").
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  getHello() {
+    return { service: 'UniVerse API', status: 'ok' };
   }
 
   @Get('health/db')

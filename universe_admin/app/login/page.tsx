@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { API_BASE_URL } from '../../lib/apiConfig';
 
 export default function LoginPage() {
@@ -42,8 +43,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-surface p-8 rounded-2xl border border-border w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-foreground mb-1">UniVerse Admin</h1>
-        <p className="text-text-secondary mb-6">Sign in to manage the platform.</p>
+        <div className="flex justify-center mb-4">
+          <Image src="/logo.jpg" alt="UniVerse" width={64} height={64} className="rounded-xl" />
+        </div>
+        <h1 className="text-2xl font-bold text-foreground mb-1 text-center">UniVerse Admin</h1>
+        <p className="text-text-secondary mb-6 text-center">Sign in to manage the platform.</p>
 
         <input
           type="email"

@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
@@ -119,7 +120,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('UniVerse'),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            UniVerseLogo(size: 28),
+            SizedBox(width: 8),
+            Text('UniVerse'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

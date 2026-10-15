@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
@@ -41,9 +42,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="w-64 shrink-0 bg-surface border-r border-border flex flex-col">
-        <div className="px-6 py-5 border-b border-border">
-          <p className="font-bold text-lg text-foreground">UniVerse</p>
-          <p className="text-xs text-text-secondary">Admin Platform</p>
+        <div className="px-6 py-5 border-b border-border flex items-center gap-3">
+          <Image src="/logo.jpg" alt="UniVerse" width={36} height={36} className="rounded-lg shrink-0" />
+          <div>
+            <p className="font-bold text-lg text-foreground leading-tight">UniVerse</p>
+            <p className="text-xs text-text-secondary">Admin Platform</p>
+          </div>
         </div>
         <nav className="flex-1 py-4 px-3 space-y-1">
           {NAV_ITEMS.map((item) => {

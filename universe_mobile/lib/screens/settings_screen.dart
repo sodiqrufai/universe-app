@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
@@ -180,7 +181,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.info_outline,
               label: 'About UniVerse',
               subtitle: 'Version 1.0.0',
-              onTap: null,
+              onTap: () => showAboutDialog(
+                context: context,
+                applicationName: 'UniVerse',
+                applicationVersion: '1.0.0',
+                applicationIcon: const UniVerseLogo(size: 48),
+                applicationLegalese: 'One App. Every Student.',
+              ),
             ),
           ]),
           _sectionLabel('Danger Zone'),

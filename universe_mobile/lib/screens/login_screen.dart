@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import '../../config/api_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -105,6 +106,8 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const SizedBox(height: 8),
+            const Center(child: UniVerseLogo(size: 88)),
             const SizedBox(height: 16),
             Text(
               'Welcome Back',

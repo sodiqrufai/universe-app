@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
@@ -182,19 +183,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 110,
-                      height: 110,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.school,
-                        color: Colors.white,
-                        size: 56,
-                      ),
-                    ),
+                    const UniVerseLogo(size: 120, badge: true),
                     const SizedBox(height: 24),
                     const Text(
                       'UniVerse',

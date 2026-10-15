@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import '../widgets/step_progress_dots.dart';
 import '../models/sign_up_data.dart';
 import '../models/profile_setup_data.dart';
 import '../services/session_service.dart';
+import '../services/auth_email_service.dart';
 import 'profile_photo_screen.dart';
 import 'login_screen.dart';
 
@@ -33,6 +35,39 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
   bool _submitting = false;
   bool _needsConfirmation = false;
   String? _error;
+  String? _info;
+  bool _resending = false;
+  int _cooldown = 60;
+  Timer? _timer;
+
+  void _startCooldown() {
+    _timer?.cancel();
+    setState(() => _cooldown = 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _cooldown--);
+      if (_cooldown <= 0) t.cancel();
+    });
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      _resending = true;
+      _info = null;
+      _error = null;
+    });
+    final r = await AuthEmailService.resendConfirmation(widget.data.email);
+    if (!mounted) return;
+    setState(() {
+      _resending = false;
+      if (r.ok) {
+        _info = 'Confirmation email sent again.';
+      } else {
+        _error = r.error;
+      }
+    });
+    if (r.ok) _startCooldown();
+  }
 
   Future<void> _continue() async {
     if (_confirmController.text != widget.data.password) {
@@ -75,6 +110,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
           _needsConfirmation = true;
           _submitting = false;
         });
+        _startCooldown();
         return;
       }
 
@@ -102,6 +138,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _confirmController.dispose();
     super.dispose();
   }
@@ -124,7 +161,7 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'We sent a confirmation link to ${widget.data.email}. Verify it, then log in to finish setting up your profile.',
+                'We sent a confirmation link to ${widget.data.email}. Open it, then come back and log in to finish setting up your profile.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
               ),
@@ -134,7 +171,21 @@ class _ConfirmPasswordScreenState extends State<ConfirmPasswordScreen> {
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                   (route) => false,
                 ),
-                child: const Text('Go to Login'),
+                child: const Text('I\'ve confirmed — Log in'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: (_cooldown > 0 || _resending) ? null : _resend,
+                child: Text(_cooldown > 0 ? 'Resend email in ${_cooldown}s' : (_resending ? 'Sending…' : 'Resend email')),
+              ),
+              if (_info != null)
+                Text(_info!, style: TextStyle(color: AppColors.success)),
+              if (_error != null)
+                Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: AppColors.error)),
+              const SizedBox(height: 8),
+              Text(
+                'Nothing there? Check your spam folder.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
           ),

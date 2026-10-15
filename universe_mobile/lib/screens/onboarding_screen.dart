@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_theme.dart';
@@ -17,7 +18,8 @@ class _OnboardingSlide {
   final IconData icon;
   final String title;
   final String body;
-  const _OnboardingSlide({required this.icon, required this.title, required this.body});
+  final bool logo;
+  const _OnboardingSlide({required this.icon, required this.title, required this.body, this.logo = false});
 }
 
 /// First-time-install-only intro. Shown once, then never again — the
@@ -36,6 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _slides = [
     _OnboardingSlide(
       icon: Icons.school,
+      logo: true,
       title: 'Everything campus, one app',
       body: 'Courses, events, marketplace, and services — all built around your university.',
     ),
@@ -134,12 +137,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
-            child: Icon(slide.icon, size: 56, color: AppColors.primary),
-          ),
+          if (slide.logo)
+            const UniVerseLogo(size: 140)
+          else
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(color: AppColors.lightPurple, shape: BoxShape.circle),
+              child: Icon(slide.icon, size: 56, color: AppColors.primary),
+            ),
           const SizedBox(height: AppSpacing.xxxl),
           Text(
             slide.title,

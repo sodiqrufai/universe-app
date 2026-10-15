@@ -1,3 +1,4 @@
+import '../widgets/universe_logo.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
@@ -88,7 +89,7 @@ class _WaitlistHoldingScreenState extends State<WaitlistHoldingScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.hourglass_top_outlined, size: 56, color: AppColors.primary),
+            const Center(child: UniVerseLogo(size: 72)),
             const SizedBox(height: 24),
             Text(
               'You\'re on the list',

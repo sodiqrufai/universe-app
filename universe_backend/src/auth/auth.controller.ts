@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, Post, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { confirmedPage, resetPasswordPage } from './auth.pages';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -15,6 +17,40 @@ export class AuthController {
       this.config.get<string>('SUPABASE_URL')!,
       this.config.get<string>('SUPABASE_ANON_KEY')!,
     );
+  }
+
+  private publicBaseUrl() {
+    return (
+      this.config.get<string>('PUBLIC_BASE_URL') ?? 'https://universe-app-w4cc.onrender.com'
+    ).replace(/\/$/, '');
+  }
+
+  private confirmRedirect() {
+    return (
+      this.config.get<string>('EMAIL_CONFIRM_REDIRECT_URL') ??
+      `${this.publicBaseUrl()}/auth/confirmed`
+    );
+  }
+
+  private resetRedirect() {
+    return (
+      this.config.get<string>('PASSWORD_RESET_REDIRECT_URL') ??
+      `${this.publicBaseUrl()}/auth/reset-password`
+    );
+  }
+
+  // Landing page for the link in the "confirm your email" message.
+  @Get('confirmed')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  confirmed() {
+    return confirmedPage();
+  }
+
+  // Landing page for the link in the "reset your password" message.
+  @Get('reset-password')
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  resetPasswordLanding() {
+    return resetPasswordPage();
   }
 
   @Get('check-username')
@@ -39,8 +75,9 @@ export class AuthController {
   @Post('register')
   async register(@Body() body: { email: string; password: string; fullName?: string }) {
     const { data, error } = await this.getAuthClient().auth.signUp({
-      email: body.email,
+      email: body.email?.trim().toLowerCase(),
       password: body.password,
+      options: { emailRedirectTo: this.confirmRedirect() },
     });
 
     if (error) {
@@ -54,6 +91,19 @@ export class AuthController {
 
     if (!data.user) {
       return { success: false, error: 'Registration failed unexpectedly' };
+    }
+
+    // With email confirmation ON, Supabase answers a signup for an
+    // already-registered email with a fake user (no error, no session) and
+    // silently keeps the ORIGINAL password. That user's `identities` array
+    // is empty. Surface it instead of pretending the signup worked, otherwise
+    // the person later logs in with the "new" password and gets "Invalid
+    // login credentials".
+    if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return {
+        success: false,
+        error: 'An account with this email already exists. Log in, or use Forgot Password.',
+      };
     }
 
     // A profile row must exist the instant the auth account exists, full stop
@@ -90,7 +140,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
     const { data, error } = await this.getAuthClient().auth.signInWithPassword({
-      email: body.email,
+      email: body.email?.trim().toLowerCase(),
       password: body.password,
     });
 
@@ -123,25 +173,54 @@ export class AuthController {
     };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('reset-password')
   async resetPassword(@Body() body: { email: string }) {
-    // Previously called with no redirectTo at all, which silently falls
-    // back to whatever Supabase's dashboard "Site URL" is set to --
-    // reported bug was that link pointing at localhost, because that
-    // dashboard setting was still on its default placeholder value.
-    // Making this explicit here doesn't fix the underlying dashboard
-    // setting (that's a Supabase Auth > URL Configuration change only
-    // someone with dashboard access can make), but it stops a second,
-    // separate cause of the same symptom: this code silently depending
-    // on that setting being right, with no visible link between the two.
-    const redirectUrl = this.config.get<string>('PASSWORD_RESET_REDIRECT_URL');
     const { error } = await this.getAuthClient().auth.resetPasswordForEmail(
-      body.email,
-      redirectUrl ? { redirectTo: redirectUrl } : undefined,
+      body.email?.trim().toLowerCase(),
+      { redirectTo: this.resetRedirect() },
     );
 
-    if (error) {
-      return { success: false, error: error.message };
+    // Always report success for unknown emails (no account enumeration);
+    // only surface genuine rate-limit style failures.
+    if (error && /rate|too many|seconds/i.test(error.message)) {
+      return { success: false, error: 'Please wait a minute before requesting another email.' };
+    }
+    return { success: true };
+  }
+
+  // Called by the reset-password landing page with the recovery token from
+  // the emailed link.
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('update-password')
+  async updatePassword(@Body() body: { accessToken: string; newPassword: string }) {
+    if (!body.accessToken || !body.newPassword || body.newPassword.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters.' };
+    }
+    const { data, error } = await this.getAuthClient().auth.getUser(body.accessToken);
+    if (error || !data.user) {
+      return { success: false, error: 'This reset link is invalid or has expired.' };
+    }
+    const { error: updateError } = await this.supabase.client.auth.admin.updateUserById(
+      data.user.id,
+      { password: body.newPassword },
+    );
+    if (updateError) {
+      return { success: false, error: updateError.message };
+    }
+    return { success: true };
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('resend-confirmation')
+  async resendConfirmation(@Body() body: { email: string }) {
+    const { error } = await this.getAuthClient().auth.resend({
+      type: 'signup',
+      email: body.email?.trim().toLowerCase(),
+      options: { emailRedirectTo: this.confirmRedirect() },
+    });
+    if (error && /rate|too many|seconds/i.test(error.message)) {
+      return { success: false, error: 'Please wait a minute before requesting another email.' };
     }
     return { success: true };
   }

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# %%SITE_URL%% is replaced by build_site.ps1 -SiteUrl. If you are seeing this
+# line in the live site, rebuild with -SiteUrl "https://your-domain".
+Sitemap: %%SITE_URL%%/sitemap.xml

@@ -2,6 +2,9 @@ import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Unau
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
+import { uploadOptions } from '../common/upload';
 
 const ROLE_RANK: Record<string, number> = {
   student: 0,
@@ -15,7 +18,15 @@ export class AdminController {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly notifications: NotificationsService,
+    private readonly config: ConfigService,
   ) {}
+
+  private paging(page?: string, pageSize?: string) {
+    const pageNum = Math.max(1, parseInt(page ?? '1', 10) || 1);
+    const size = Math.min(100, Math.max(1, parseInt(pageSize ?? '25', 10) || 25));
+    const from = (pageNum - 1) * size;
+    return { pageNum, size, from, to: from + size - 1 };
+  }
 
   private async getAdminFromToken(authHeader?: string, minRole: string = 'moderator') {
     if (!authHeader?.startsWith('Bearer ')) {
@@ -318,7 +329,7 @@ export class AdminController {
   // ---------- Announcements ----------
 
   @Post('announcements')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('image')))
   async createAnnouncement(
     @Headers('authorization') authHeader: string,
     @UploadedFile() file: any,
@@ -618,7 +629,206 @@ export class AdminController {
     return { success: true };
   }
 
+  // ---------- Support & launch tooling ----------
+  // Added for the usability test: lets an admin see public signups, partner
+  // inquiries and feedback, and help a user who can't get in.
+
+  @Get('waitlist-signups')
+  async getWaitlistSignups(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('universityId') universityId?: string,
+  ) {
+    await this.getAdminFromToken(authHeader);
+    const { pageNum, size, from, to } = this.paging(page, pageSize);
+
+    let query = this.supabase.client
+      .from('waitlist_signups')
+      .select('id, email, created_at, university_id, universities(name, short_name)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (universityId) query = query.eq('university_id', universityId);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, items: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Get('partner-inquiries')
+  async getPartnerInquiries(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('status') status?: string,
+  ) {
+    await this.getAdminFromToken(authHeader);
+    const { pageNum, size, from, to } = this.paging(page, pageSize);
+
+    let query = this.supabase.client
+      .from('partner_inquiries')
+      .select('id, name, organization, email, message, status, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (status && ['new', 'contacted', 'closed'].includes(status)) query = query.eq('status', status);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+    return { success: true, items: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Patch('partner-inquiries/:id')
+  async updatePartnerInquiry(
+    @Headers('authorization') authHeader: string,
+    @Param('id') id: string,
+    @Body() body: { status?: string },
+  ) {
+    const admin = await this.getAdminFromToken(authHeader);
+    if (!body.status || !['new', 'contacted', 'closed'].includes(body.status)) {
+      return { success: false, error: 'Status must be new, contacted or closed.' };
+    }
+    const { data, error } = await this.supabase.client
+      .from('partner_inquiries').update({ status: body.status }).eq('id', id).select();
+    if (error) return { success: false, error: error.message };
+    if (!data || data.length === 0) return { success: false, error: 'Inquiry not found' };
+    await this.logAction(admin.id, 'update_partner_inquiry', 'partner_inquiries', id, { status: body.status });
+    return { success: true };
+  }
+
+  @Get('feedback')
+  async getFeedback(
+    @Headers('authorization') authHeader: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('category') category?: string,
+    @Query('status') status?: string,
+  ) {
+    await this.getAdminFromToken(authHeader);
+    const { pageNum, size, from, to } = this.paging(page, pageSize);
+
+    let query = this.supabase.client
+      .from('feedback')
+      .select('id, user_id, message, category, screen, app_version, platform, status, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+    if (category && ['bug', 'idea', 'other'].includes(category)) query = query.eq('category', category);
+    if (status && ['new', 'reviewed', 'closed'].includes(status)) query = query.eq('status', status);
+
+    const { data, error, count } = await query;
+    if (error) return { success: false, error: error.message };
+
+    // feedback.user_id points at auth.users, so profiles can't be embedded;
+    // look the authors up in one extra query instead.
+    const ids = [...new Set((data ?? []).map((f: any) => f.user_id).filter(Boolean))];
+    let people: Record<string, any> = {};
+    if (ids.length) {
+      const { data: profiles } = await this.supabase.client
+        .from('profiles').select('id, full_name, username').in('id', ids);
+      people = Object.fromEntries((profiles ?? []).map((p: any) => [p.id, p]));
+    }
+    const items = (data ?? []).map((f: any) => ({ ...f, author: f.user_id ? people[f.user_id] ?? null : null }));
+    return { success: true, items, total: count ?? 0, page: pageNum, pageSize: size };
+  }
+
+  @Patch('feedback/:id')
+  async updateFeedback(
+    @Headers('authorization') authHeader: string,
+    @Param('id') id: string,
+    @Body() body: { status?: string },
+  ) {
+    const admin = await this.getAdminFromToken(authHeader);
+    if (!body.status || !['new', 'reviewed', 'closed'].includes(body.status)) {
+      return { success: false, error: 'Status must be new, reviewed or closed.' };
+    }
+    const { data, error } = await this.supabase.client
+      .from('feedback').update({ status: body.status }).eq('id', id).select();
+    if (error) return { success: false, error: error.message };
+    if (!data || data.length === 0) return { success: false, error: 'Feedback not found' };
+    await this.logAction(admin.id, 'update_feedback', 'feedback', id, { status: body.status });
+    return { success: true };
+  }
+
+  // Why can't this person log in? Answers "never confirmed email" vs
+  // "never finished setup" vs "suspended" without opening the Supabase dashboard.
+  @Get('users/:id/auth-status')
+  async getUserAuthStatus(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    await this.getAdminFromToken(authHeader);
+    const { data, error } = await this.supabase.client.auth.admin.getUserById(id);
+    if (error || !data?.user) return { success: false, error: 'No login account found for this user.' };
+    const u = data.user;
+
+    const { data: profile } = await this.supabase.client
+      .from('profiles')
+      .select('username, level, university_id, is_suspended')
+      .eq('id', id)
+      .maybeSingle();
+
+    return {
+      success: true,
+      email: u.email ?? null,
+      emailConfirmed: !!u.email_confirmed_at,
+      lastSignInAt: u.last_sign_in_at ?? null,
+      createdAt: u.created_at,
+      suspended: !!profile?.is_suspended,
+      hasProfile: !!profile,
+      // Same definition the app uses: sign-up isn't finished until username, level and university are saved.
+      setupComplete: !!(profile?.username && profile?.level && profile?.university_id),
+    };
+  }
+
+  // Sends the standard Supabase reset email to the user's own address. The admin
+  // never sees or sets a password. Higher bar (university_admin) than read-only lookups.
+  @Post('users/:id/send-password-reset')
+  async sendPasswordReset(@Headers('authorization') authHeader: string, @Param('id') id: string) {
+    const admin = await this.getAdminFromToken(authHeader, 'university_admin');
+    const { data, error } = await this.supabase.client.auth.admin.getUserById(id);
+    if (error || !data?.user?.email) return { success: false, error: 'No login account found for this user.' };
+
+    const base = (this.config.get<string>('PUBLIC_BASE_URL') ?? 'https://universe-app-w4cc.onrender.com').replace(/\/$/, '');
+    const redirectTo = this.config.get<string>('PASSWORD_RESET_REDIRECT_URL') ?? `${base}/auth/reset-password`;
+
+    const authClient = createClient(
+      this.config.get<string>('SUPABASE_URL')!,
+      this.config.get<string>('SUPABASE_ANON_KEY')!,
+    );
+    const { error: sendError } = await authClient.auth.resetPasswordForEmail(data.user.email, { redirectTo });
+    if (sendError) {
+      if (/rate|too many|seconds/i.test(sendError.message)) {
+        return { success: false, error: 'An email was sent very recently. Wait a minute and try again.' };
+      }
+      return { success: false, error: sendError.message };
+    }
+    await this.logAction(admin.id, 'send_password_reset', 'users', id);
+    return { success: true };
+  }
+
   // ---------- Verifications (existing, unchanged behavior) ----------
+
+  // One list endpoint for the three tabs (pending/approved/rejected). The older
+  // /pending, /approved, /rejected routes below still work unchanged. Returns the
+  // rows under both `items` (new contract) and `verifications` (old key).
+  @Get('verifications')
+  async listVerifications(
+    @Headers('authorization') authHeader: string,
+    @Query('status') status = 'pending',
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    await this.getAdminFromToken(authHeader);
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return { success: false, error: 'Status must be pending, approved or rejected.' };
+    }
+    const { pageNum, size, from, to } = this.paging(page, pageSize);
+
+    const { data, error, count } = await this.supabase.client
+      .from('verifications')
+      .select('*, universities(name)', { count: 'exact' })
+      .eq('status', status)
+      .order(status === 'pending' ? 'created_at' : 'reviewed_at', { ascending: status === 'pending' })
+      .range(from, to);
+    if (error) return { success: false, error: error.message };
+    return { success: true, items: data ?? [], verifications: data ?? [], total: count ?? 0, page: pageNum, pageSize: size };
+  }
 
   @Get('verifications/pending')
   async getPending(@Headers('authorization') authHeader: string) {

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Post, Query, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { uploadOptions, sanitizeFilename } from '../common/upload';
 
 @Controller('education')
 export class EducationController {
@@ -87,7 +88,7 @@ export class EducationController {
   }
 
   @Post('courses/:id/resources')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('document')))
   async uploadResource(
     @Headers('authorization') authHeader: string,
     @Param('id') courseId: string,
@@ -99,7 +100,7 @@ export class EducationController {
     if (!file) return { success: false, error: 'No file provided' };
     if (!body.title?.trim()) return { success: false, error: 'Title is required' };
 
-    const filePath = `${courseId}/${Date.now()}-${file.originalname}`;
+    const filePath = `${courseId}/${Date.now()}-${sanitizeFilename(file.originalname)}`;
 
     const { error: uploadError } = await this.supabase.client.storage
       .from('resources')

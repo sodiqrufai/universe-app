@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { uploadOptions, assertFileWithinLimit } from '../common/upload';
 
 @Controller('stories')
 export class StoriesController {
@@ -19,7 +20,7 @@ export class StoriesController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('image', 'video')))
   async createStory(
     @Headers('authorization') authHeader: string,
     @UploadedFile() file: any,
@@ -30,7 +31,8 @@ export class StoriesController {
     if (!file) {
       return { success: false, error: 'No media file provided' };
     }
-    const mediaType = ['image', 'video'].includes(body.mediaType) ? body.mediaType : 'image';
+    const detectedKind = assertFileWithinLimit(file, ['image', 'video']);
+    const mediaType = detectedKind === 'video' ? 'video' : 'image';
 
     const { data: profile } = await this.supabase.client
       .from('profiles')

@@ -11,9 +11,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { uploadOptions, assertFileWithinLimit, sanitizeFilename } from '../common/upload';
 
+// Chat polls every few seconds, so it gets a much higher per-user limit than the default.
+@Throttle({ default: { limit: 300, ttl: 60000 } })
 @Controller('chat')
 export class ChatController {
   constructor(
@@ -338,7 +342,7 @@ export class ChatController {
   }
 
   @Post(':id/messages')
-  @UseInterceptors(FileInterceptor('attachment'))
+  @UseInterceptors(FileInterceptor('attachment', uploadOptions('image', 'audio')))
   async sendMessage(
     @Headers('authorization') authHeader: string,
     @Param('id') conversationId: string,
@@ -370,8 +374,9 @@ export class ChatController {
     const durationSeconds = body.durationSeconds ? parseInt(body.durationSeconds, 10) : null;
 
     if (file) {
+      assertFileWithinLimit(file, ['image', 'audio']);
       const bucket = mediaType === 'audio' ? 'chat-voice-notes' : 'chat-attachments';
-      const filePath = `${conversationId}/${Date.now()}-${file.originalname}`;
+      const filePath = `${conversationId}/${Date.now()}-${sanitizeFilename(file.originalname)}`;
 
       const { error: uploadError } = await this.supabase.client.storage
         .from(bucket)

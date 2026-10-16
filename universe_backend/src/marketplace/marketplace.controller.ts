@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Unau
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { uploadOptions } from '../common/upload';
 
 @Controller('marketplace')
 export class MarketplaceController {
@@ -139,7 +140,7 @@ export class MarketplaceController {
   }
 
   @Post('listings')
-  @UseInterceptors(FilesInterceptor('images', 6))
+  @UseInterceptors(FilesInterceptor('images', 6, uploadOptions('image')))
   async createListing(
     @Headers('authorization') authHeader: string,
     @UploadedFiles() files: any[],

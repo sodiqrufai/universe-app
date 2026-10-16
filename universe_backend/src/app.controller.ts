@@ -16,6 +16,13 @@ export class AppController {
     return { service: 'UniVerse API', status: 'ok' };
   }
 
+  // Cheap liveness probe for UptimeRobot / Render. Touches nothing external,
+  // so it stays fast and never fails because of the database.
+  @Get('health')
+  health() {
+    return { status: 'ok', time: new Date().toISOString() };
+  }
+
   @Get('health/db')
   async checkDb() {
     const { data, error } = await this.supabase.client.auth.admin.listUsers();

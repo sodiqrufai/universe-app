@@ -18,3 +18,5 @@ Thumbs.db
 
 # IDE
 .vscode/
+# Database backups contain student data - never commit
+**/backups/

@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, Post, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { uploadOptions } from '../common/upload';
 
 @Controller('verification')
 export class VerificationController {
@@ -19,7 +20,7 @@ export class VerificationController {
   }
 
   @Post('submit')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('image')))
   async submit(
     @Headers('authorization') authHeader: string,
     @UploadedFile() file: any,

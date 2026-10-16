@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Post, Query, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseService } from '../supabase/supabase.service';
+import { uploadOptions } from '../common/upload';
 
 @Controller('posts')
 export class PostsController {
@@ -19,7 +20,7 @@ export class PostsController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('image')))
   async createPost(
     @Headers('authorization') authHeader: string,
     @UploadedFile() file: any,

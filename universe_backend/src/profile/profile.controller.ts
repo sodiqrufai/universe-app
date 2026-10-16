@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SupabaseService } from '../supabase/supabase.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Delete } from '@nestjs/common';
+import { uploadOptions } from '../common/upload';
 
 
 @Controller('profile')
@@ -210,7 +211,7 @@ export class ProfileController {
   }
   
   @Post('avatar')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', uploadOptions('image')))
   async uploadAvatar(
     @Headers('authorization') authHeader: string,
     @UploadedFile() file: Express.Multer.File,
@@ -340,9 +341,27 @@ export class ProfileController {
   async deleteAccount(@Headers('authorization') authHeader: string) {
     const user = await this.getUserFromToken(authHeader);
 
+    // Deleting the login row cascades the database rows, but NOT files in
+    // storage. Remove the ones filed under this user's id first (most
+    // importantly the student-ID photo). Best effort: a storage hiccup must
+    // not block the user from deleting their account.
+    await this.purgeUserFiles(user.id);
+
     const { error } = await this.supabase.client.auth.admin.deleteUser(user.id);
 
     if (error) return { success: false, error: error.message };
     return { success: true };
+  }
+
+  private async purgeUserFiles(userId: string) {
+    for (const bucket of ['verification-docs', 'avatars', 'post-media', 'story-media']) {
+      try {
+        const { data: files } = await this.supabase.client.storage.from(bucket).list(userId, { limit: 1000 });
+        const paths = (files ?? []).filter((f) => f.name).map((f) => `${userId}/${f.name}`);
+        if (paths.length) await this.supabase.client.storage.from(bucket).remove(paths);
+      } catch (e) {
+        console.error(`Could not purge ${bucket} files for deleted user`, e);
+      }
+    }
   }
 }

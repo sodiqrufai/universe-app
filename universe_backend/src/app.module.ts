@@ -22,6 +22,8 @@ import { LegalController } from './legal/legal.controller';
 import { SearchController } from './search/search.controller';
 import { WaitlistController } from './waitlist/waitlist.controller';
 import { PublicController } from './public/public.controller';
+import { FeedbackController } from './feedback/feedback.controller';
+import { throttlerConfig } from './common/throttle';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -29,9 +31,9 @@ import { APP_GUARD } from '@nestjs/core';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]), // 30 requests/min default, override per-route below
+    ThrottlerModule.forRoot(throttlerConfig), // per-user 120/min + per-IP 1200/min ceiling; override per-route with @Throttle({ default: ... })
   ],
-  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController, ServicesController, EventsController, ChatController, NotificationsController, StoriesController, LegalController, SearchController, WaitlistController, PublicController],
+  controllers: [AppController, AuthController, ProfileController, VerificationController, AdminController, HomeController, PostsController, AnonymousController, EducationController, MarketplaceController, ServicesController, EventsController, ChatController, NotificationsController, StoriesController, LegalController, SearchController, WaitlistController, PublicController, FeedbackController],
   providers: [AppService, NotificationsService,
   { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

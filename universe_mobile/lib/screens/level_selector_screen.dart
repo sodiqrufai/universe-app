@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/telemetry.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/profile_setup_data.dart';
 import 'review_screen.dart';
@@ -104,6 +105,7 @@ class _LevelSelectorScreenState extends State<LevelSelectorScreen> {
           Navigator.of(context).pop(true);
           return;
         }
+        Telemetry.track('signup_complete');
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ReviewScreen()),
         );

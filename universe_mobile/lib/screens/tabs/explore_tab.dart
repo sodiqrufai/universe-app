@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/state_views.dart';
 import '../course_detail_screen.dart';
 import '../event_detail_screen.dart';
@@ -432,16 +433,9 @@ class _ExploreTabState extends State<ExploreTab> {
     }
     final items = _filteredItems;
     if (items.isEmpty) {
-      return RefreshIndicator(
+      return RefreshableEmptyState(
         onRefresh: _fetchAll,
-        color: AppColors.primary,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const [
-            SizedBox(height: 100),
-            Center(child: Text('Nothing here yet — check back soon.')),
-          ],
-        ),
+        child: _buildEmptyState(),
       );
     }
     return RefreshIndicator(
@@ -483,6 +477,60 @@ class _ExploreTabState extends State<ExploreTab> {
         ],
       ),
     );
+  }
+
+  /// Empty state tailored to the active filter, with the one action that
+  /// makes sense there (Education has no "create": its FAB is hidden too).
+  Widget _buildEmptyState() {
+    switch (_filter) {
+      case _ExploreType.education:
+        return const AppEmptyState(
+          icon: Icons.school_outlined,
+          title: 'No study resources yet',
+          message:
+              'Courses and notes for your department will appear here as they are added.',
+        );
+      case _ExploreType.event:
+        return AppEmptyState(
+          icon: Icons.event_outlined,
+          title: 'No events coming up',
+          message:
+              'Organising something? Create an event and let your campus know.',
+          actionLabel: 'Create an event',
+          actionIcon: Icons.event_outlined,
+          onAction: _createEvent,
+        );
+      case _ExploreType.service:
+        return AppEmptyState(
+          icon: Icons.design_services_outlined,
+          title: 'No services listed yet',
+          message:
+              'Offer a skill such as design, tutoring or laundry, and students can book you.',
+          actionLabel: 'Offer a service',
+          actionIcon: Icons.design_services_outlined,
+          onAction: _createService,
+        );
+      case _ExploreType.marketplace:
+        return AppEmptyState(
+          icon: Icons.storefront_outlined,
+          title: 'Nothing for sale yet',
+          message:
+              'Selling a textbook, a gadget or clothes? List it in a minute and reach students on your campus.',
+          actionLabel: 'List an item',
+          actionIcon: Icons.storefront_outlined,
+          onAction: _createListing,
+        );
+      case null:
+        return AppEmptyState(
+          icon: Icons.explore_outlined,
+          title: 'Nothing to explore yet',
+          message:
+              'Marketplace listings, services, events and study resources from your campus will show up here. Be the first to add one.',
+          actionLabel: 'Add something',
+          actionIcon: Icons.add,
+          onAction: _create,
+        );
+    }
   }
 
   Widget _buildPartialFailureBanner() {

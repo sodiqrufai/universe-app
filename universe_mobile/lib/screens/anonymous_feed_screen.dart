@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
+import '../widgets/empty_state.dart';
 import 'anonymous_post_detail_screen.dart';
 
 class AnonymousFeedScreen extends StatefulWidget {
@@ -157,11 +158,28 @@ class _AnonymousFeedScreenState extends State<AnonymousFeedScreen> {
               onRefresh: _fetchFeed,
               color: AppColors.primary,
               child: _posts.isEmpty
-                  ? ListView(
-                      children: const [
-                        SizedBox(height: 100),
-                        Center(child: Text('No posts yet — share something!')),
-                      ],
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: Center(
+                              child: AppEmptyState(
+                                icon: Icons.masks_outlined,
+                                title: 'No anonymous posts yet',
+                                message:
+                                    'Say what you really think. Nobody sees your name, only a made-up username.',
+                                actionLabel: 'Post anonymously',
+                                actionIcon: Icons.masks_outlined,
+                                onAction: _showCreatePostSheet,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(12),

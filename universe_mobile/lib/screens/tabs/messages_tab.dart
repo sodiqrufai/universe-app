@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/state_views.dart';
+import 'explore_tab.dart';
 import '../chat_detail_screen.dart';
 
 enum _MsgFilter { all, groups, unread }
@@ -21,6 +23,7 @@ class _MessagesTabState extends State<MessagesTab> {
   List<dynamic> _conversations = [];
   bool _loading = true;
   bool _hasError = false;
+  String _errorMessage = 'Could not load your messages';
   _MsgFilter _filter = _MsgFilter.all;
   final _searchController = TextEditingController();
   String _query = '';
@@ -54,6 +57,7 @@ class _MessagesTabState extends State<MessagesTab> {
         });
       } else {
         setState(() {
+          _errorMessage = loadErrorMessage(data, 'Could not load your messages');
           _hasError = true;
           _loading = false;
         });
@@ -87,7 +91,7 @@ class _MessagesTabState extends State<MessagesTab> {
       return const LoadingView();
     }
     if (_hasError) {
-      return ErrorView(message: 'Could not load your messages', onRetry: _fetchInbox);
+      return ErrorView(message: _errorMessage, onRetry: _fetchInbox);
     }
 
     return Column(
@@ -148,50 +152,80 @@ class _MessagesTabState extends State<MessagesTab> {
     );
   }
 
+  void _openExplore() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Explore')),
+          body: const ExploreTab(),
+        ),
+      ),
+    );
+  }
+
+  /// Shown when there ARE conversations but the search or filter hides them
+  /// all, so the message says why and offers the way back.
+  Widget _buildNoMatchState() {
+    if (_query.isNotEmpty) {
+      return AppEmptyState(
+        icon: Icons.search_off,
+        title: 'No matches for "${_searchController.text.trim()}"',
+        message: 'Check the spelling or try a different name.',
+        actionLabel: 'Clear search',
+        actionIcon: Icons.close,
+        onAction: _searchController.clear,
+      );
+    }
+    switch (_filter) {
+      case _MsgFilter.groups:
+        return AppEmptyState(
+          icon: Icons.groups_outlined,
+          title: 'No group chats yet',
+          message: 'Group conversations will show up here.',
+          actionLabel: 'Show all messages',
+          actionIcon: Icons.chat_bubble_outline,
+          onAction: () => setState(() => _filter = _MsgFilter.all),
+        );
+      case _MsgFilter.unread:
+        return AppEmptyState(
+          icon: Icons.mark_chat_read_outlined,
+          title: "You're all caught up",
+          message: 'No unread messages right now.',
+          actionLabel: 'Show all messages',
+          actionIcon: Icons.chat_bubble_outline,
+          onAction: () => setState(() => _filter = _MsgFilter.all),
+        );
+      case _MsgFilter.all:
+        return const AppEmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'No conversations here',
+          message: 'Pull down to refresh.',
+        );
+    }
+  }
+
   Widget _buildList() {
     final list = _filtered;
 
     if (_conversations.isEmpty) {
-      return RefreshIndicator(
+      return RefreshableEmptyState(
         onRefresh: _fetchInbox,
-        color: AppColors.primary,
-        child: ListView(
-          children: [
-            SizedBox(height: 120),
-            Icon(Icons.chat_bubble_outline, size: 40, color: AppColors.textMuted),
-            SizedBox(height: 12),
-            Center(
-              child: Text(
-                'No conversations yet',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            SizedBox(height: 4),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: Center(
-                child: Text(
-                  'Messages from sellers, providers, and students you chat with will show up here.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ),
-            ),
-          ],
+        child: AppEmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'No messages yet',
+          message:
+              'Chats with sellers, service providers and classmates will show up here. Find something you like in Explore and say hello.',
+          actionLabel: 'Browse Explore',
+          actionIcon: Icons.explore_outlined,
+          onAction: _openExplore,
         ),
       );
     }
 
     if (list.isEmpty) {
-      return RefreshIndicator(
+      return RefreshableEmptyState(
         onRefresh: _fetchInbox,
-        color: AppColors.primary,
-        child: ListView(
-          children: const [
-            SizedBox(height: 120),
-            Center(child: Text('No conversations match this filter')),
-          ],
-        ),
+        child: _buildNoMatchState(),
       );
     }
 

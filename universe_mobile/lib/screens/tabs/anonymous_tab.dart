@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/restricted_dialog.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/state_views.dart';
 import '../../widgets/app_image.dart';
 import '../../utils/relative_time.dart';
@@ -21,6 +22,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
   List<dynamic> _posts = [];
   bool _loading = true;
   bool _hasError = false;
+  String _errorMessage = 'Could not load Anonymous';
   bool _hasProfile = false;
   String _category = 'all';
   _SortMode _sort = _SortMode.recent;
@@ -61,6 +63,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
         });
       } else {
         setState(() {
+          _errorMessage = loadErrorMessage(data, 'Could not load Anonymous');
           _hasError = true;
           _loading = false;
         });
@@ -364,7 +367,7 @@ class _AnonymousTabState extends State<AnonymousTab> {
       return const LoadingView();
     }
     if (_hasError) {
-      return ErrorView(message: 'Could not load Anonymous', onRetry: _checkProfileAndFetch);
+      return ErrorView(message: _errorMessage, onRetry: _checkProfileAndFetch);
     }
 
     return RefreshIndicator(
@@ -380,10 +383,27 @@ class _AnonymousTabState extends State<AnonymousTab> {
           _buildCategoryFilter(),
           const SizedBox(height: AppSpacing.md),
           if (_filteredPosts.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(child: Text('No posts here yet — share something!')),
-            )
+            _posts.isNotEmpty && _category != 'all'
+                ? AppEmptyState(
+                    icon: Icons.filter_list_off,
+                    title: 'No $_category posts yet',
+                    message:
+                        'Nothing has been shared under this category. Be the first, or look at everything.',
+                    actionLabel: 'Post anonymously',
+                    actionIcon: Icons.masks_outlined,
+                    onAction: _createPost,
+                    secondaryLabel: 'Show all posts',
+                    onSecondary: () => setState(() => _category = 'all'),
+                  )
+                : AppEmptyState(
+                    icon: Icons.masks_outlined,
+                    title: 'No anonymous posts yet',
+                    message:
+                        'Say what you really think. Nobody sees your name, only a made-up username.',
+                    actionLabel: 'Post anonymously',
+                    actionIcon: Icons.masks_outlined,
+                    onAction: _createPost,
+                  )
           else
             ..._filteredPosts.asMap().entries.map(
               (e) => _buildPostCard(e.value, _posts.indexOf(e.value)),

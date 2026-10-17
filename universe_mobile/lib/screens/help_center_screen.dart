@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config/support_config.dart';
 import '../theme/app_theme.dart';
+import 'feedback_screen.dart';
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
@@ -26,6 +30,46 @@ class HelpCenterScreen extends StatelessWidget {
       'Settings > Account Verification section > scroll to the bottom for Delete Account. This is permanent and cannot be undone.',
     ),
   ];
+
+  Future<void> _open(BuildContext context, Uri uri, String fallbackText) async {
+    var opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!opened && context.mounted) {
+      await Clipboard.setData(ClipboardData(text: fallbackText));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Couldn\'t open an app. Copied $fallbackText instead.')),
+      );
+    }
+  }
+
+  Widget _contactRow(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.lightPurple,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: AppColors.primary),
+        title: Text(
+          title,
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+        ),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        trailing: Icon(Icons.chevron_right, color: AppColors.primary),
+        onTap: onTap,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,23 +103,45 @@ class HelpCenterScreen extends StatelessWidget {
               ),
             ),
           const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: AppColors.lightPurple,
-              borderRadius: BorderRadius.circular(AppRadius.card),
+          Text(
+            'Still need help?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
             ),
-            child: Row(
-              children: [
-                Icon(Icons.mail_outline, color: AppColors.primary),
-                SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Text(
-                    'Still need help? Reach us at support@universe.app',
-                    style: TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _contactRow(
+            context,
+            icon: Icons.mail_outline,
+            title: 'Email support',
+            subtitle: SupportConfig.email,
+            onTap: () => _open(
+              context,
+              SupportConfig.emailUri(subject: 'UniVerse support'),
+              SupportConfig.email,
+            ),
+          ),
+          if (SupportConfig.hasWhatsapp)
+            _contactRow(
+              context,
+              icon: Icons.chat_outlined,
+              title: 'Chat on WhatsApp',
+              subtitle: 'Message us directly',
+              onTap: () => _open(
+                context,
+                SupportConfig.whatsappUri(),
+                '+${SupportConfig.whatsapp}',
+              ),
+            ),
+          _contactRow(
+            context,
+            icon: Icons.feedback_outlined,
+            title: 'Send feedback',
+            subtitle: 'Report a bug or share an idea',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FeedbackScreen()),
             ),
           ),
         ],

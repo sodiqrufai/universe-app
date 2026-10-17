@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/state_views.dart';
+import '../../widgets/welcome_checklist.dart';
 import '../../utils/relative_time.dart';
 import '../create_post_screen.dart';
 import '../post_detail_screen.dart';
@@ -28,6 +30,8 @@ class _FeedTabState extends State<FeedTab> {
   bool _loading = true;
   bool _hasError = false;
   final _storyKey = GlobalKey<StoryCarouselState>();
+  final _checklistKey = GlobalKey<WelcomeChecklistState>();
+  String _errorMessage = 'Could not load the feed';
   final _scrollController = ScrollController();
 
   static const _pageSize = 20;
@@ -117,6 +121,7 @@ class _FeedTabState extends State<FeedTab> {
         });
       } else {
         setState(() {
+          _errorMessage = loadErrorMessage(postsData, 'Could not load the feed');
           _hasError = true;
           _loading = false;
         });
@@ -240,13 +245,14 @@ class _FeedTabState extends State<FeedTab> {
       return const LoadingView();
     }
     if (_hasError) {
-      return ErrorView(message: 'Could not load the feed', onRetry: _fetchAll);
+      return ErrorView(message: _errorMessage, onRetry: _fetchAll);
     }
     return RefreshIndicator(
       onRefresh: () async {
         await Future.wait([
           _fetchAll(),
           _storyKey.currentState?.refresh() ?? Future.value(),
+          _checklistKey.currentState?.refresh() ?? Future.value(),
         ]);
       },
       color: AppColors.primary,
@@ -256,6 +262,7 @@ class _FeedTabState extends State<FeedTab> {
         children: [
           StoryCarousel(key: _storyKey),
           const SizedBox(height: AppSpacing.md),
+          WelcomeChecklist(key: _checklistKey, onFeedChanged: _fetchAll),
           if (_trending.isNotEmpty) ...[
             _buildTrendingRow(),
             const SizedBox(height: AppSpacing.md),
@@ -271,14 +278,28 @@ class _FeedTabState extends State<FeedTab> {
                 if (_activeTag != null) _buildActiveTagBanner(),
                 if (_posts.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 80),
-                    child: Center(
-                      child: Text(
-                        _activeTag != null
-                            ? 'No posts tagged "$_activeTag" yet'
-                            : 'No posts yet — be the first to share something!',
-                      ),
-                    ),
+                    padding: const EdgeInsets.only(top: 24),
+                    child: _activeTag != null
+                        ? AppEmptyState(
+                            icon: Icons.tag,
+                            title: 'No posts tagged #$_activeTag yet',
+                            message:
+                                'Start the conversation. Post something with this tag and others will find it.',
+                            actionLabel: 'Post with this tag',
+                            actionIcon: Icons.edit_outlined,
+                            onAction: _createPost,
+                            secondaryLabel: 'Show all posts',
+                            onSecondary: () => _selectTag(null),
+                          )
+                        : AppEmptyState(
+                            icon: Icons.dynamic_feed_outlined,
+                            title: 'Your campus feed is quiet',
+                            message:
+                                'Be the first to share something: a question, a tip, an event, anything on your mind.',
+                            actionLabel: 'Create a post',
+                            actionIcon: Icons.edit_outlined,
+                            onAction: _createPost,
+                          ),
                   )
                 else
                   ..._posts.asMap().entries.map((e) => _buildPostCard(e.value, e.key)),

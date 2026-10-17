@@ -18,6 +18,8 @@ import 'theme_screen.dart';
 import '../theme/theme_controller.dart';
 import 'language_screen.dart';
 import 'help_center_screen.dart';
+import 'feedback_screen.dart';
+import '../services/app_info.dart';
 import 'terms_screen.dart';
 import 'privacy_policy_screen.dart';
 
@@ -166,6 +168,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => _push(const HelpCenterScreen()),
             ),
             _tile(
+              icon: Icons.feedback_outlined,
+              label: 'Send feedback',
+              subtitle: 'Report a bug or share an idea',
+              onTap: () => _push(const FeedbackScreen()),
+            ),
+            _tile(
               icon: Icons.description_outlined,
               label: 'Terms & Conditions',
               subtitle: 'Read our terms',
@@ -180,11 +188,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _tile(
               icon: Icons.info_outline,
               label: 'About UniVerse',
-              subtitle: 'Version 1.0.0',
+              subtitle: 'Version ${AppInfo.version}',
               onTap: () => showAboutDialog(
                 context: context,
                 applicationName: 'UniVerse',
-                applicationVersion: '1.0.0',
+                applicationVersion: AppInfo.version,
                 applicationIcon: const UniVerseLogo(size: 48),
                 applicationLegalese: 'One App. Every Student.',
               ),

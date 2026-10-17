@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import '../config/api_config.dart';
 import '../theme/app_theme.dart';
-import '../services/session_service.dart';
+import '../services/telemetry.dart';
+import '../utils/upload_rules.dart';
 import '../widgets/restricted_dialog.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -23,6 +20,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _visibility = 'university';
   bool _posting = false;
   String? _error;
+  // True only when the last failure came from the upload itself, so "Try
+  // again" is not offered for things like a rejected photo.
+  bool _retryable = false;
   final List<String> _tags = [];
 
   void _addTag(String raw) {
@@ -38,24 +38,31 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked != null) {
-      final bytes = await picked.readAsBytes();
+    if (_posting) return;
+    final result = await UploadPicker.pickImage();
+    if (!mounted || result.cancelled) return;
+    if (result.error != null) {
+      // Keep any image that was already chosen; just explain why this one
+      // was refused ("That image is 9.2MB. The limit is 8MB.").
       setState(() {
-        _imageBytes = bytes;
-        _imageName = picked.name;
+        _error = result.error;
+        _retryable = false;
       });
+      return;
     }
+    setState(() {
+      _imageBytes = result.file!.bytes;
+      _imageName = result.file!.name;
+      _error = null;
+    });
   }
 
   Future<void> _submit() async {
+    if (_posting) return;
     if (_contentController.text.trim().isEmpty) {
       setState(() {
         _error = 'Write something before posting';
+        _retryable = false;
       });
       return;
     }
@@ -63,45 +70,53 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     setState(() {
       _posting = true;
       _error = null;
+      _retryable = false;
     });
 
     try {
-      final token = await SessionService.getToken();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/posts'),
+      final data = await UploadApi.send(
+        '/posts',
+        fields: {
+          'content': _contentController.text.trim(),
+          'visibility': _visibility,
+          if (_tags.isNotEmpty) 'tags': _tags.join(','),
+        },
+        files: [
+          if (_imageBytes != null)
+            UploadFile(
+              field: 'file',
+              bytes: _imageBytes!,
+              name: _imageName ?? 'post.jpg',
+            ),
+        ],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['content'] = _contentController.text.trim();
-      request.fields['visibility'] = _visibility;
-      if (_tags.isNotEmpty) request.fields['tags'] = _tags.join(',');
-      if (_imageBytes != null) {
-        request.files.add(
-          http.MultipartFile.fromBytes('file', _imageBytes!, filename: _imageName),
-        );
-      }
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
+        Telemetry.track('post_created', {'has_image': _imageBytes != null});
         if (mounted) Navigator.of(context).pop(true);
-      } else if (response.statusCode == 403) {
-        final message = data['message'] ?? data['error'] ?? 'This action is restricted on your account.';
-        if (mounted) {
-          await showRestrictedDialog(context, message is List ? message.join(', ') : message.toString());
-        }
+        return;
+      }
+      if (!mounted) return;
+      if (data['restricted'] == true) {
+        await showRestrictedDialog(
+          context,
+          (data['error'] ?? 'This action is restricted on your account.').toString(),
+        );
       } else {
         setState(() {
-          _error = data['error'] ?? data['message'] ?? 'Failed to post';
+          _error = (data['error'] ?? 'Could not post. Please try again.').toString();
+          _retryable = true;
         });
       }
-    } catch (e) {
-      setState(() {
-        _error = 'Could not post — check your connection';
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not post. Please try again.';
+          _retryable = true;
+        });
+      }
     } finally {
+      // Never leave the Post button spinning.
       if (mounted) {
         setState(() {
           _posting = false;
@@ -153,9 +168,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             if (_imageBytes != null) ...[
               const SizedBox(height: AppSpacing.md),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                child: Image.memory(_imageBytes!, height: 200, fit: BoxFit.cover),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    child: Image.memory(
+                      _imageBytes!,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton.filled(
+                      tooltip: 'Remove image',
+                      onPressed: _posting
+                          ? null
+                          : () => setState(() {
+                                _imageBytes = null;
+                                _imageName = null;
+                              }),
+                      icon: const Icon(Icons.close, size: 18),
+                    ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
@@ -200,7 +238,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Row(
               children: [
                 IconButton(
-                  onPressed: _pickImage,
+                  onPressed: _posting ? null : _pickImage,
                   tooltip: 'Add image',
                   icon: Icon(
                     Icons.image_outlined,
@@ -230,10 +268,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ],
             ),
+            if (_posting)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.md),
+                child: Text(
+                  _imageBytes != null ? 'Uploading your photo and posting…' : 'Posting…',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: Text(_error!, style: TextStyle(color: AppColors.error)),
+                child: UploadErrorBox(
+                  message: _error!,
+                  onRetry: (_retryable && !_posting) ? _submit : null,
+                ),
               ),
           ],
         ),

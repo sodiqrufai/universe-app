@@ -1,11 +1,8 @@
-import '../../config/api_config.dart';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
-import '../services/session_service.dart';
+import '../services/api_service.dart';
+import '../utils/upload_rules.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -25,6 +22,8 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   String? _coverName;
   bool _submitting = false;
   String? _error;
+  // True only when the last failure came from the upload itself.
+  bool _retryable = false;
 
   @override
   void initState() {
@@ -33,30 +32,33 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   }
 
   Future<void> _fetchCategories() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/events/categories'),
-      );
-      final data = jsonDecode(response.body);
+    // Categories are optional, so a failure here doesn't block posting.
+    final data = await ApiService.get('/events/categories');
+    if (!mounted) return;
+    if (data['success'] == true) {
       setState(() {
         _categories = data['categories'] ?? [];
       });
-    } catch (_) {}
+    }
   }
 
   Future<void> _pickCover() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked != null) {
-      final bytes = await picked.readAsBytes();
+    if (_submitting) return;
+    final result = await UploadPicker.pickImage();
+    if (!mounted || result.cancelled) return;
+    if (result.error != null) {
       setState(() {
-        _coverBytes = bytes;
-        _coverName = picked.name;
+        _error = result.error;
+        _retryable = false;
       });
+      return;
     }
+    setState(() {
+      _coverBytes = result.file!.bytes;
+      _coverName = result.file!.name;
+      _error = null;
+      _retryable = false;
+    });
   }
 
   Future<void> _pickDateTime() async {
@@ -84,9 +86,11 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     if (_titleController.text.trim().isEmpty || _startsAt == null) {
       setState(() {
         _error = 'Title and date/time are required';
+        _retryable = false;
       });
       return;
     }
@@ -94,44 +98,48 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     setState(() {
       _submitting = true;
       _error = null;
+      _retryable = false;
     });
 
-    final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/events'),
+      final data = await UploadApi.send(
+        '/events',
+        fields: {
+          'title': _titleController.text.trim(),
+          'description': _descController.text.trim(),
+          'location': _locationController.text.trim(),
+          'startsAt': _startsAt!.toUtc().toIso8601String(),
+          if (_selectedCategoryId != null) 'categoryId': _selectedCategoryId!,
+        },
+        files: [
+          if (_coverBytes != null)
+            UploadFile(
+              field: 'cover',
+              bytes: _coverBytes!,
+              name: _coverName ?? 'cover.jpg',
+            ),
+        ],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['title'] = _titleController.text.trim();
-      request.fields['description'] = _descController.text.trim();
-      request.fields['location'] = _locationController.text.trim();
-      request.fields['startsAt'] = _startsAt!.toUtc().toIso8601String();
-      if (_selectedCategoryId != null) {
-        request.fields['categoryId'] = _selectedCategoryId!;
-      }
-      if (_coverBytes != null) {
-        request.files.add(
-          http.MultipartFile.fromBytes('cover', _coverBytes!, filename: _coverName),
-        );
-      }
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
         if (mounted) Navigator.of(context).pop(true);
-      } else {
+        return;
+      }
+      if (mounted) {
         setState(() {
-          _error = data['error'] ?? 'Failed to create event';
+          _error = (data['error'] ?? 'Could not create your event. Please try again.').toString();
+          _retryable = true;
         });
       }
-    } catch (e) {
-      setState(() {
-        _error = 'Error: $e';
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not create your event. Please try again.';
+          _retryable = true;
+        });
+      }
     } finally {
+      // Never leave the Post button spinning.
       if (mounted) {
         setState(() {
           _submitting = false;
@@ -240,10 +248,21 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
               }).toList(),
               onChanged: (v) => setState(() => _selectedCategoryId = v),
             ),
+            if (_submitting)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Text(
+                  _coverBytes == null ? 'Posting…' : 'Uploading your cover photo and posting…',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                child: UploadErrorBox(
+                  message: _error!,
+                  onRetry: (_retryable && !_submitting) ? _submit : null,
+                ),
               ),
           ],
         ),

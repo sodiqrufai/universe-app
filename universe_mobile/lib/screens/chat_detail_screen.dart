@@ -1,17 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:intl/intl.dart';
 import 'package:record/record.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
+import '../services/telemetry.dart';
+import '../utils/upload_rules.dart';
 import '../widgets/state_views.dart';
 import '../widgets/app_image.dart';
 
@@ -32,20 +33,45 @@ class ChatDetailScreen extends StatefulWidget {
   State<ChatDetailScreen> createState() => _ChatDetailScreenState();
 }
 
-class _ChatDetailScreenState extends State<ChatDetailScreen> {
+class _ChatDetailScreenState extends State<ChatDetailScreen> with WidgetsBindingObserver {
   List<dynamic> _messages = [];
   bool _loading = true;
   bool _hasError = false;
   String? _myUserId;
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  Timer? _pollTimer;
   bool _showEmojiPicker = false;
 
+  // --- polling -------------------------------------------------------------
+  // A single self-rescheduling timer (not Timer.periodic) so requests never
+  // pile up, and the delay can change: 3s while the chat is active, slower
+  // when nothing has happened for a while, exponential backoff when the
+  // server errors or rate-limits us, and no polling at all while the app is
+  // in the background.
+  static const _activeDelay = Duration(seconds: 3);
+  static const _idleDelay = Duration(seconds: 10);
+  static const _veryIdleDelay = Duration(seconds: 30);
+  static const _maxBackoff = Duration(seconds: 60);
+  static const _rateLimitFloor = Duration(seconds: 15);
+  Timer? _pollTimer;
+  bool _fetching = false;
+  bool _appInForeground = true;
+  int _consecutiveFailures = 0;
+  bool _lastWasRateLimited = false;
+  DateTime _lastActivity = DateTime.now();
+
+  // --- sending -------------------------------------------------------------
+  bool _sending = false;
+
+  // --- voice notes ---------------------------------------------------------
   final _recorder = AudioRecorder();
   bool _isRecording = false;
   int _recordSeconds = 0;
   Timer? _recordTimer;
+  // Whether this device/browser can record at all. Starts optimistic on
+  // phones; checked on web (some browsers have no MediaRecorder / opus).
+  bool _voiceSupported = true;
+  AudioEncoder _voiceEncoder = AudioEncoder.aacLc;
 
   static const _emojis = [
     '😀', '😂', '😍', '🥲', '😭', '😡', '🙏', '👍', '👎', '❤️',
@@ -56,19 +82,90 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _init();
-    _pollTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) => _fetchMessages(silent: true),
-    );
+    _checkVoiceSupport();
   }
 
   Future<void> _init() async {
     _myUserId = await SessionService.getUserId();
     await _fetchMessages();
+    _schedulePoll();
+  }
+
+  Future<void> _checkVoiceSupport() async {
+    if (!kIsWeb) return; // phones: AAC to a temp file, as before
+    try {
+      // Browsers record Opus (webm); AAC is not available on web.
+      final ok = await _recorder.isEncoderSupported(AudioEncoder.opus);
+      if (ok) {
+        _voiceEncoder = AudioEncoder.opus;
+      }
+      if (mounted) setState(() => _voiceSupported = ok);
+    } catch (_) {
+      if (mounted) setState(() => _voiceSupported = false);
+    }
+  }
+
+  // --- app lifecycle: pause polling in the background ----------------------
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _appInForeground = true;
+      // Catch up straight away, then carry on at the normal pace.
+      _consecutiveFailures = 0;
+      _lastWasRateLimited = false;
+      _lastActivity = DateTime.now();
+      _pollTimer?.cancel();
+      _fetchMessages(silent: true).whenComplete(_schedulePoll);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      // `inactive` is deliberately ignored: it also fires for brief system
+      // overlays such as the microphone permission prompt.
+      _appInForeground = false;
+      _pollTimer?.cancel();
+      _pollTimer = null;
+    }
+  }
+
+  Duration _nextPollDelay() {
+    if (_consecutiveFailures > 0 || _lastWasRateLimited) {
+      final base = _lastWasRateLimited ? _rateLimitFloor : _activeDelay;
+      final exp = _consecutiveFailures > 0 ? _consecutiveFailures - 1 : 0;
+      // 3s, 6s, 12s, 24s, 48s, then capped at 60s (rate limited: 15s, 30s, 60s).
+      final ms = base.inMilliseconds * (1 << (exp > 5 ? 5 : exp));
+      return Duration(
+        milliseconds: ms > _maxBackoff.inMilliseconds ? _maxBackoff.inMilliseconds : ms,
+      );
+    }
+    final quiet = DateTime.now().difference(_lastActivity);
+    if (quiet > const Duration(minutes: 5)) return _veryIdleDelay;
+    if (quiet > const Duration(minutes: 1)) return _idleDelay;
+    return _activeDelay;
+  }
+
+  void _schedulePoll() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    if (!mounted || !_appInForeground) return;
+    _pollTimer = Timer(_nextPollDelay(), () async {
+      await _fetchMessages(silent: true);
+      _schedulePoll();
+    });
+  }
+
+  void _markActive() {
+    final wasIdle = DateTime.now().difference(_lastActivity) > const Duration(minutes: 1);
+    _lastActivity = DateTime.now();
+    // Typing after a long quiet spell: don't wait out a 30s timer.
+    if (wasIdle && _consecutiveFailures == 0 && !_lastWasRateLimited) _schedulePoll();
   }
 
   Future<void> _fetchMessages({bool silent = false}) async {
+    if (_fetching) return;
+    _fetching = true;
     if (!silent) {
       setState(() {
         _loading = true;
@@ -77,29 +174,45 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
     try {
       final data = await ApiService.get('/chat/${widget.conversationId}/messages');
+      if (!mounted) return;
       if (data['success'] == true) {
-        final newMessages = data['messages'] ?? [];
-        final shouldScroll = newMessages.length != _messages.length;
+        _consecutiveFailures = 0;
+        _lastWasRateLimited = false;
+        final List<dynamic> newMessages = data['messages'] ?? [];
+        final changed = newMessages.length != _messages.length;
+        final fromOther = changed &&
+            newMessages.isNotEmpty &&
+            newMessages.last['sender_id'] != _myUserId;
+        if (fromOther) _lastActivity = DateTime.now();
         setState(() {
           _messages = newMessages;
           _loading = false;
+          _hasError = false;
         });
-        if (shouldScroll) _scrollToBottom();
-      } else if (!silent) {
-        setState(() {
-          _hasError = true;
-          _loading = false;
-        });
+        if (changed) _scrollToBottom();
+      } else {
+        _consecutiveFailures++;
+        _lastWasRateLimited = data['rateLimited'] == true;
+        if (!silent) {
+          setState(() {
+            _hasError = true;
+            _loading = false;
+          });
+        }
       }
-    } catch (e) {
+    } catch (_) {
       // A silent background poll failing shouldn't flash an error screen
-      // over an otherwise-working chat — only the initial load does.
+      // over an otherwise-working chat: only the initial load does.
+      if (!mounted) return;
+      _consecutiveFailures++;
       if (!silent) {
         setState(() {
           _hasError = true;
           _loading = false;
         });
       }
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -115,102 +228,175 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
-  Future<void> _sendMessage({String? imagePath, String? audioPath, int? durationSeconds}) async {
-    if (_messageController.text.trim().isEmpty && imagePath == null && audioPath == null) return;
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 
+  /// Sends a text message, optionally with a picked image or a voice note.
+  /// Attachments are sent as bytes, so this works on web as well as phones.
+  Future<void> _sendMessage({
+    UploadFile? attachment,
+    bool isAudio = false,
+    int? durationSeconds,
+  }) async {
+    if (_sending) return;
     final text = _messageController.text.trim();
-    _messageController.clear();
+    if (text.isEmpty && attachment == null) return;
 
-    // Multipart (for the optional image/voice attachment) — ApiService has no
-    // file-upload method, same legitimate exception as Course's resource
-    // upload, still using the same token source as everywhere else.
+    _messageController.clear();
+    _markActive();
+    setState(() => _sending = true);
+
     try {
-      final token = await SessionService.getToken();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/chat/${widget.conversationId}/messages'),
+      final data = await UploadApi.send(
+        '/chat/${widget.conversationId}/messages',
+        fields: {
+          if (text.isNotEmpty) 'content': text,
+          if (attachment != null && isAudio) 'mediaType': 'audio',
+          if (attachment != null && isAudio && durationSeconds != null)
+            'durationSeconds': durationSeconds.toString(),
+        },
+        files: [if (attachment != null) attachment],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      if (text.isNotEmpty) request.fields['content'] = text;
-      if (imagePath != null) {
-        request.files.add(await http.MultipartFile.fromPath('attachment', imagePath));
-      } else if (audioPath != null) {
-        request.fields['mediaType'] = 'audio';
-        if (durationSeconds != null) {
-          request.fields['durationSeconds'] = durationSeconds.toString();
-        }
-        request.files.add(await http.MultipartFile.fromPath('attachment', audioPath));
-      }
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
-        await _fetchMessages();
+        Telemetry.track('message_sent', {
+          'type': attachment == null ? 'text' : (isAudio ? 'voice' : 'image'),
+        });
+        // A send is a sign the chat is live again: reset any backoff.
+        _consecutiveFailures = 0;
+        _lastWasRateLimited = false;
+        await _fetchMessages(silent: true);
+        _schedulePoll();
       } else if (mounted) {
-        _messageController.text = text;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['error'] ?? 'Message not sent')),
-        );
+        // Put the text back so nothing the student typed is lost.
+        if (text.isNotEmpty && _messageController.text.isEmpty) {
+          _messageController.text = text;
+        }
+        _toast((data['error'] ?? 'Message not sent. Please try again.').toString());
       }
     } catch (_) {
       if (mounted) {
-        _messageController.text = text;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Message not sent — check your connection')));
+        if (text.isNotEmpty && _messageController.text.isEmpty) {
+          _messageController.text = text;
+        }
+        _toast('Message not sent. Please try again.');
       }
+    } finally {
+      // Never leave the send/attach/mic buttons disabled.
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<void> _pickAndSendImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (picked != null) {
-      await _sendMessage(imagePath: picked.path);
+    if (_sending) return;
+    final result = await UploadPicker.pickImage();
+    if (!mounted || result.cancelled) return;
+    if (result.error != null) {
+      _toast(result.error!);
+      return;
     }
+    final file = result.file!;
+    await _sendMessage(
+      attachment: UploadFile(field: 'attachment', bytes: file.bytes, name: file.name),
+    );
   }
 
   Future<void> _startRecording() async {
-    final hasPermission = await _recorder.hasPermission();
-    if (!hasPermission) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone permission is needed to record voice notes')),
-        );
-      }
+    if (_sending || _isRecording) return;
+    if (!_voiceSupported) {
+      _toast("Voice notes aren't supported in this browser.");
       return;
     }
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
-    if (!mounted) return;
+    try {
+      final hasPermission = await _recorder.hasPermission();
+      if (!hasPermission) {
+        _toast('Microphone permission is needed to record voice notes');
+        return;
+      }
+      if (kIsWeb) {
+        // On web the recording stays in the browser; the path is ignored.
+        await _recorder.start(RecordConfig(encoder: _voiceEncoder), path: '');
+      } else {
+        final dir = await getTemporaryDirectory();
+        final path = '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+        await _recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: path);
+      }
+    } catch (_) {
+      _toast("Couldn't start recording. Please check your microphone and try again.");
+      return;
+    }
+    if (!mounted) {
+      try {
+        await _recorder.stop();
+      } catch (_) {}
+      return;
+    }
     setState(() {
       _isRecording = true;
       _recordSeconds = 0;
     });
+    _recordTimer?.cancel();
     _recordTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _recordSeconds++);
+      if (!mounted) return;
+      setState(() => _recordSeconds++);
+      // The server accepts 5MB; stop a runaway recording well before that.
+      if (_recordSeconds >= 120) _stopRecordingAndSend();
     });
   }
 
   Future<void> _stopRecordingAndSend() async {
     if (!_isRecording) return;
     _recordTimer?.cancel();
-    final path = await _recorder.stop();
     final seconds = _recordSeconds;
+    String? path;
+    try {
+      path = await _recorder.stop();
+    } catch (_) {
+      path = null;
+    }
     if (mounted) setState(() => _isRecording = false);
     // Anything under a second is almost certainly an accidental tap, not a
-    // real voice note — don't bother sending it.
-    if (path != null && seconds >= 1) {
-      await _sendMessage(audioPath: path, durationSeconds: seconds);
+    // real voice note: don't bother sending it.
+    if (path == null || seconds < 1) return;
+
+    try {
+      // XFile reads a file path on phones and a blob URL on web.
+      final x = XFile(path);
+      final size = await x.length();
+      final problem = UploadRules.validate(
+        fileName: kIsWeb ? 'voice_note.webm' : 'voice_note.m4a',
+        sizeBytes: size,
+        allowed: const [UploadKind.audio],
+      );
+      if (problem != null) {
+        _toast(problem);
+        return;
+      }
+      final Uint8List bytes = await x.readAsBytes();
+      await _sendMessage(
+        attachment: UploadFile(
+          field: 'attachment',
+          bytes: bytes,
+          name: kIsWeb ? 'voice_note.webm' : 'voice_note.m4a',
+        ),
+        isAudio: true,
+        durationSeconds: seconds,
+      );
+    } catch (_) {
+      _toast('Voice note not sent. Please try again.');
     }
   }
 
   Future<void> _cancelRecording() async {
     if (!_isRecording) return;
     _recordTimer?.cancel();
-    await _recorder.stop();
+    try {
+      await _recorder.stop();
+    } catch (_) {}
     if (mounted) setState(() => _isRecording = false);
   }
 
@@ -342,6 +528,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollTimer?.cancel();
     _recordTimer?.cancel();
     _recorder.dispose();
@@ -423,36 +610,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         IconButton(
           icon: Icon(Icons.image_outlined, color: AppColors.primary),
           tooltip: 'Attach image',
-          onPressed: _pickAndSendImage,
+          onPressed: _sending ? null : _pickAndSendImage,
         ),
         Expanded(
           child: TextField(
             controller: _messageController,
+            onChanged: (_) => _markActive(),
             onTap: () {
               if (_showEmojiPicker) setState(() => _showEmojiPicker = false);
             },
             decoration: const InputDecoration(hintText: 'Type a message...'),
           ),
         ),
-        // Press and hold to record, release to send — same interaction
-        // pattern as WhatsApp/Telegram/iMessage.
-        Semantics(
-          label: 'Hold to record a voice note',
-          button: true,
-          child: GestureDetector(
-            onLongPressStart: (_) => _startRecording(),
-            onLongPressEnd: (_) => _stopRecordingAndSend(),
-            onLongPressCancel: _cancelRecording,
-            child: Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(Icons.mic_none, color: AppColors.primary),
+        // Press and hold to record, release to send: same interaction
+        // pattern as WhatsApp/Telegram/iMessage. Hidden where the browser
+        // can't record, so there's no button that does nothing.
+        if (_voiceSupported)
+          Semantics(
+            label: 'Hold to record a voice note',
+            button: true,
+            child: GestureDetector(
+              onLongPressStart: (_) => _startRecording(),
+              onLongPressEnd: (_) => _stopRecordingAndSend(),
+              onLongPressCancel: _cancelRecording,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(Icons.mic_none, color: AppColors.primary),
+              ),
             ),
           ),
-        ),
         IconButton(
           icon: Icon(Icons.send, color: AppColors.primary),
           tooltip: 'Send message',
-          onPressed: () => _sendMessage(),
+          onPressed: _sending ? null : () => _sendMessage(),
         ),
       ],
     );

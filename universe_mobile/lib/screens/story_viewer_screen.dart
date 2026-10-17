@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -35,6 +36,8 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   AnimationController? _imageTimer;
   VideoPlayerController? _videoController;
   Timer? _videoProgressTimer;
+  // True when the current video couldn't be loaded or stopped with an error.
+  bool _videoFailed = false;
 
   static const _imageDuration = Duration(seconds: 5);
 
@@ -48,6 +51,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   Future<void> _init() async {
     _myUserId = await SessionService.getUserId();
+    if (!mounted) return;
     _loadStory();
   }
 
@@ -62,8 +66,12 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     _imageTimer = null;
     _videoProgressTimer?.cancel();
     _videoProgressTimer = null;
-    _videoController?.dispose();
+    // Detach first, then dispose, so a late callback never touches a
+    // disposed controller.
+    final old = _videoController;
     _videoController = null;
+    _videoFailed = false;
+    old?.dispose();
   }
 
   void _loadStory() {
@@ -103,24 +111,62 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   }
 
   Future<void> _startVideo(String url) async {
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    final VideoPlayerController controller;
+    try {
+      controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    } catch (_) {
+      if (mounted) setState(() => _videoFailed = true);
+      return;
+    }
     _videoController = controller;
     try {
       await controller.initialize();
-      if (!mounted) return;
-      controller.play();
+      // The viewer moved on (or closed) while the video was loading: this
+      // controller was already disposed by _clearMedia, so do nothing.
+      if (!mounted || _videoController != controller) return;
+      await controller.play();
+      if (!mounted || _videoController != controller) return;
+      if (kIsWeb) {
+        // Browsers can refuse autoplay with sound. If it did not start,
+        // retry muted rather than leaving the story frozen.
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        if (!mounted || _videoController != controller) return;
+        if (!controller.value.isPlaying && !controller.value.hasError) {
+          await controller.setVolume(0);
+          await controller.play();
+        }
+      }
+      if (!mounted || _videoController != controller) return;
       _videoProgressTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-        if (!mounted || controller.value.duration.inMilliseconds == 0) return;
-        final p = controller.value.position.inMilliseconds /
-            controller.value.duration.inMilliseconds;
-        setState(() => _progress = p.clamp(0, 1));
-        if (controller.value.position >= controller.value.duration) _advance();
+        if (!mounted || _videoController != controller) return;
+        final value = controller.value;
+        if (value.hasError) {
+          _videoProgressTimer?.cancel();
+          setState(() => _videoFailed = true);
+          return;
+        }
+        if (value.duration.inMilliseconds == 0) return;
+        final p = value.position.inMilliseconds / value.duration.inMilliseconds;
+        setState(() => _progress = p.clamp(0.0, 1.0));
+        if (value.position >= value.duration) {
+          _videoProgressTimer?.cancel();
+          _advance();
+        }
       });
       setState(() {});
     } catch (_) {
-      // Couldn't load the video — don't strand the viewer, just move on.
-      _advance();
+      if (!mounted || _videoController != controller) return;
+      // Couldn't load the video: say so, and let the viewer retry or tap on.
+      setState(() => _videoFailed = true);
     }
+  }
+
+  void _retryVideo() {
+    final story = _currentStory;
+    if (story == null) return;
+    _clearMedia();
+    setState(() => _progress = 0);
+    _startVideo(story['media_url']);
   }
 
   void _advance() {
@@ -260,6 +306,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             ),
           ],
         ),
+        if (story['media_type'] == 'video' && _videoFailed) _buildVideoError(),
         SafeArea(
           child: Column(
             children: [
@@ -350,8 +397,40 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     );
   }
 
+  Widget _buildVideoError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.videocam_off_outlined, color: Colors.white70, size: 48),
+          const SizedBox(height: 12),
+          const Text(
+            "This video couldn't be played.",
+            style: TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _retryVideo,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white54),
+            ),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try again'),
+          ),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: _advance,
+            child: const Text('Skip', style: TextStyle(color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMedia(dynamic story) {
     if (story['media_type'] == 'video') {
+      if (_videoFailed) return const SizedBox.expand();
       final controller = _videoController;
       if (controller == null || !controller.value.isInitialized) {
         return const Center(
@@ -360,8 +439,20 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
       }
       return Center(
         child: AspectRatio(
-          aspectRatio: controller.value.aspectRatio,
-          child: VideoPlayer(controller),
+          aspectRatio: controller.value.aspectRatio == 0 ? 9 / 16 : controller.value.aspectRatio,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              VideoPlayer(controller),
+              // Show a spinner while the video is buffering mid-playback.
+              ValueListenableBuilder<VideoPlayerValue>(
+                valueListenable: controller,
+                builder: (context, value, _) => value.isBuffering
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       );
     }

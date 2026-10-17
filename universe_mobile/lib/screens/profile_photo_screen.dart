@@ -1,13 +1,9 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../widgets/step_progress_dots.dart';
 import '../models/profile_setup_data.dart';
-import '../services/session_service.dart';
+import '../utils/upload_rules.dart';
 import 'bio_screen.dart';
 
 /// Step 6 of 12: Profile Photo (optional). Avatar upload still happens
@@ -32,18 +28,22 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
   String? _error;
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked != null) {
-      final bytes = await picked.readAsBytes();
-      setState(() {
-        _imageBytes = bytes;
-        _imageName = picked.name;
-      });
+    if (_uploading) return;
+    final result = await UploadPicker.pickImage(quality: 85);
+    if (!mounted || result.cancelled) return;
+    if (result.error != null) {
+      setState(() => _error = result.error);
+      return;
     }
+    setState(() {
+      _imageBytes = result.file!.bytes;
+      _imageName = result.file!.name;
+      _error = null;
+    });
   }
 
   Future<void> _continue() async {
+    if (_uploading) return;
     if (_imageBytes == null) {
       _goNext();
       return;
@@ -53,31 +53,32 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
       _error = null;
     });
     try {
-      final token = await SessionService.getToken();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/profile/avatar'),
+      final data = await UploadApi.send(
+        '/profile/avatar',
+        files: [
+          UploadFile(field: 'file', bytes: _imageBytes!, name: _imageName ?? 'avatar.jpg'),
+        ],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(http.MultipartFile.fromBytes('file', _imageBytes!, filename: _imageName));
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
+        // Leave _uploading as is: the screen is about to be replaced. If it
+        // is still mounted (it should not be), the finally block resets it.
         _goNext();
       } else if (mounted) {
         setState(() {
-          _error = data['error'] ?? 'Could not upload photo';
-          _uploading = false;
+          _error = (data['error'] ?? 'Could not upload your photo. Please try again.').toString();
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          _error = 'Could not upload photo — check your connection';
-          _uploading = false;
+          _error = 'Could not upload your photo. Please try again.';
         });
+      }
+    } finally {
+      // Never leave the button spinning (e.g. if navigation did not happen).
+      if (mounted) {
+        setState(() => _uploading = false);
       }
     }
   }
@@ -118,7 +119,7 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
             const SizedBox(height: 32),
             Center(
               child: GestureDetector(
-                onTap: _pickImage,
+                onTap: _uploading ? null : _pickImage,
                 child: Stack(
                   children: [
                     CircleAvatar(
@@ -146,10 +147,24 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
               ),
             ),
             const SizedBox(height: 32),
+            if (_uploading)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Uploading your photo…',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(_error!, style: TextStyle(color: AppColors.error), textAlign: TextAlign.center),
+                child: UploadErrorBox(
+                  message: _error!,
+                  // Retry only makes sense once a photo is chosen. Skipping
+                  // is always possible too: the photo is optional.
+                  onRetry: (_imageBytes != null && !_uploading) ? _continue : null,
+                ),
               ),
             ElevatedButton(
               onPressed: _uploading ? null : _continue,
@@ -161,6 +176,11 @@ class _ProfilePhotoScreenState extends State<ProfilePhotoScreen> {
                     )
                   : Text(_imageBytes != null ? 'Continue' : (widget.editMode ? 'Back' : 'Skip for now')),
             ),
+            if (_error != null && _imageBytes != null && !widget.editMode)
+              TextButton(
+                onPressed: _uploading ? null : _goNext,
+                child: const Text('Skip for now'),
+              ),
           ],
         ),
       ),

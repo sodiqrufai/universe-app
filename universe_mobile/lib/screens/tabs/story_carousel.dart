@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
-import '../../config/api_config.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../services/session_service.dart';
+import '../../utils/upload_rules.dart';
 import '../story_viewer_screen.dart';
 import '../notice_board_screen.dart';
 
@@ -88,14 +85,21 @@ class StoryCarouselState extends State<StoryCarousel> {
     );
     if (choice == null) return;
 
-    final picker = ImagePicker();
+    if (_uploading) return;
+
+    // Type and size are checked here, before anything is uploaded:
+    // "That video is 63MB. The limit is 50MB."
     final picked = choice == 'video'
-        ? await picker.pickVideo(source: ImageSource.gallery, maxDuration: const Duration(seconds: 30))
-        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return;
+        ? await UploadPicker.pickVideo(maxDuration: const Duration(seconds: 30))
+        : await UploadPicker.pickImage(quality: 85);
+    if (!mounted || picked.cancelled) return;
+    if (picked.error != null) {
+      _toast(picked.error!);
+      return;
+    }
+    final file = picked.file!;
 
     final captionController = TextEditingController();
-    if (!mounted) return;
     final caption = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -120,45 +124,58 @@ class StoryCarouselState extends State<StoryCarousel> {
         ],
       ),
     );
-    if (caption == null) return; // dialog dismissed without a choice
+    captionController.dispose();
+    if (caption == null || !mounted) return; // dialog dismissed without a choice
 
+    await _uploadStory(choice, caption, file);
+  }
+
+  /// Sends the story. On failure the snackbar offers "Try again", which
+  /// re-sends the same photo/video without picking it again.
+  Future<void> _uploadStory(String choice, String caption, PickedUpload file) async {
+    if (_uploading) return;
     setState(() => _uploading = true);
     try {
-      final token = await SessionService.getToken();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/stories'),
+      final data = await UploadApi.send(
+        '/stories',
+        fields: {
+          'mediaType': choice,
+          if (caption.isNotEmpty) 'caption': caption,
+        },
+        files: [UploadFile(field: 'file', bytes: file.bytes, name: file.name)],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['mediaType'] = choice;
-      if (caption.isNotEmpty) request.fields['caption'] = caption;
-      request.files.add(await http.MultipartFile.fromPath('file', picked.path));
-
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
         await refresh();
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Story posted')));
-        }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['error'] ?? 'Could not post story')),
+        _toast('Story posted');
+      } else {
+        _toast(
+          (data['error'] ?? 'Could not post your story. Please try again.').toString(),
+          retry: () => _uploadStory(choice, caption, file),
         );
       }
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not post story')));
-      }
+      _toast(
+        'Could not post your story. Please try again.',
+        retry: () => _uploadStory(choice, caption, file),
+      );
     } finally {
+      // Never leave "Your Story" stuck on uploading.
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  void _toast(String message, {VoidCallback? retry}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: retry == null ? const Duration(seconds: 4) : const Duration(seconds: 8),
+          action: retry == null ? null : SnackBarAction(label: 'Try again', onPressed: retry),
+        ),
+      );
   }
 
   void _openViewer(int startIndex) async {

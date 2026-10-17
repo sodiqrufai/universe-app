@@ -1,12 +1,11 @@
-import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
-import '../config/api_config.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
+import '../utils/upload_rules.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final dynamic course;
@@ -29,6 +28,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   final _searchController = TextEditingController();
 
   String? _myUserId;
+  bool _uploadingResource = false;
 
   @override
   void initState() {
@@ -269,20 +269,66 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     }
   }
 
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openResource(dynamic resource) async {
+    try {
+      final url = resource['file_path']?.toString();
+      if (url == null || url.isEmpty) {
+        _toast('This file is not available.');
+        return;
+      }
+      final ok = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok) _toast("Couldn't open this file. Please try again.");
+    } catch (_) {
+      _toast("Couldn't open this file. Please try again.");
+    }
+  }
+
   Future<void> _uploadResource() async {
+    if (_uploadingResource) return;
+
     // file_picker v12 dropped FilePicker.platform and the withData flag
     // entirely -- pickFiles() is now a direct static call returning
     // List<PlatformFile>, and reading bytes is done via the file's own
     // readAsBytes() instead of a pre-population flag.
-    final files = await FilePicker.pickFiles();
+    final List<PlatformFile> files;
+    try {
+      files = await FilePicker.pickFiles();
+    } catch (_) {
+      _toast("Couldn't open your files. Please try again.");
+      return;
+    }
     if (files.isEmpty) return;
     final pickedFile = files.first;
-    final fileBytes = await pickedFile.readAsBytes();
+
+    // Check type and size BEFORE reading the file or asking for a title:
+    // "That file is 14MB. The limit is 10MB."
+    final problem = UploadRules.validate(
+      fileName: pickedFile.name,
+      sizeBytes: pickedFile.size,
+      allowed: const [UploadKind.document],
+    );
+    if (problem != null) {
+      _toast(problem);
+      return;
+    }
 
     final titleController = TextEditingController(text: pickedFile.name);
     String type = 'note';
 
-    if (!mounted) return;
+    if (!mounted) {
+      titleController.dispose();
+      return;
+    }
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -329,49 +375,66 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
     );
 
-    if (confirmed != true) return;
+    final title = titleController.text.trim().isEmpty
+        ? pickedFile.name
+        : titleController.text.trim();
+    titleController.dispose();
+    if (confirmed != true || !mounted) return;
 
-    // ApiService has no multipart/file-upload method — this is the one
-    // legitimate remaining raw http call in this file, using the same
-    // token source as everywhere else.
+    final Uint8List fileBytes;
     try {
-      final token = await SessionService.getToken();
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(
-          '${ApiConfig.baseUrl}/education/courses/${widget.course['id']}/resources',
-        ),
-      );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.fields['title'] = titleController.text.trim();
-      request.fields['resourceType'] = type;
-      request.files.add(
-        http.MultipartFile.fromBytes('file', fileBytes, filename: pickedFile.name),
-      );
+      fileBytes = await pickedFile.readAsBytes();
+    } catch (_) {
+      _toast("Couldn't read that file. Please try another one.");
+      return;
+    }
+    await _sendResource(title, type, pickedFile, fileBytes);
+  }
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      final data = jsonDecode(response.body);
-
+  /// Sends the file. Also used by "Try again", which re-sends the same file
+  /// without asking for the title/type again.
+  Future<void> _sendResource(
+    String title,
+    String type,
+    PlatformFile pickedFile,
+    Uint8List fileBytes,
+  ) async {
+    if (_uploadingResource) return;
+    setState(() => _uploadingResource = true);
+    try {
+      final data = await UploadApi.send(
+        '/education/courses/${widget.course['id']}/resources',
+        fields: {'title': title, 'resourceType': type},
+        files: [UploadFile(field: 'file', bytes: fileBytes, name: pickedFile.name)],
+      );
       if (data['success'] == true) {
         _fetchResources();
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Resource uploaded')));
-        }
+        _toast('Resource uploaded');
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['error'] ?? 'Upload failed')),
+        _showUploadFailed(
+          (data['error'] ?? 'Upload failed. Please try again.').toString(),
+          () => _sendResource(title, type, pickedFile, fileBytes),
         );
       }
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Upload failed')));
-      }
+      if (mounted) _showUploadFailed('Upload failed. Please try again.', null);
+    } finally {
+      if (mounted) setState(() => _uploadingResource = false);
     }
+  }
+
+  void _showUploadFailed(String message, VoidCallback? onRetry) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 8),
+          action: onRetry == null
+              ? null
+              : SnackBarAction(label: 'Try again', onPressed: onRetry),
+        ),
+      );
   }
 
   @override
@@ -429,8 +492,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       ),
       floatingActionButton: FloatingActionButton.small(
         backgroundColor: AppColors.primary,
-        onPressed: _uploadResource,
-        child: const Icon(Icons.upload_file, color: Colors.white),
+        onPressed: _uploadingResource ? null : _uploadResource,
+        tooltip: _uploadingResource ? 'Uploading…' : 'Upload a resource',
+        child: _uploadingResource
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.upload_file, color: Colors.white),
       ),
     );
   }
@@ -479,10 +549,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               style: TextStyle(color: AppColors.textSecondary),
             ),
             trailing: Icon(Icons.download_outlined, color: AppColors.textMuted),
-            onTap: () => launchUrl(
-              Uri.parse(r['file_path']),
-              mode: LaunchMode.externalApplication,
-            ),
+            onTap: () => _openResource(r),
           ),
         );
       },

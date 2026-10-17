@@ -1,12 +1,9 @@
-import '../config/api_config.dart';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
-import '../services/session_service.dart';
 import '../services/api_service.dart';
+import '../utils/upload_rules.dart';
+import '../widgets/state_views.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -24,6 +21,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _saving = false;
   bool _uploadingPhoto = false;
   String? _error;
+  bool _loadFailed = false;
+  String _loadError = '';
   String? _universityName;
   String? _avatarUrl;
   Uint8List? _pickedImageBytes;
@@ -35,8 +34,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _fetchProfile() async {
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
     try {
       final data = await ApiService.get('/profile/me');
+      if (!mounted) return;
       if (data['success'] == true) {
         final profile = data['profile'];
         setState(() {
@@ -49,67 +53,66 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       } else {
         setState(() {
-          _error = data['error'];
+          _loadError = (data['error'] ?? 'Could not load your profile.').toString();
+          _loadFailed = true;
           _loading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Could not load profile: $e';
+        _loadError = 'Could not load your profile.';
+        _loadFailed = true;
         _loading = false;
       });
     }
   }
 
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 
-    final bytes = await picked.readAsBytes();
+  Future<void> _pickAndUploadImage() async {
+    if (_uploadingPhoto) return;
+    final result = await UploadPicker.pickImage();
+    if (!mounted || result.cancelled) return;
+    if (result.error != null) {
+      _toast(result.error!);
+      return;
+    }
+    final file = result.file!;
+
+    // Show the new photo straight away, but remember the old state so a
+    // failed upload puts it back instead of pretending it worked.
+    final previousBytes = _pickedImageBytes;
     setState(() {
-      _pickedImageBytes = bytes;
+      _pickedImageBytes = file.bytes;
       _uploadingPhoto = true;
     });
 
-    final token = await SessionService.getToken();
     try {
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${ApiConfig.baseUrl}/profile/avatar'),
+      final data = await UploadApi.send(
+        '/profile/avatar',
+        files: [UploadFile(field: 'file', bytes: file.bytes, name: file.name)],
       );
-      request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: picked.name));
-
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      final data = jsonDecode(response.body);
 
       if (data['success'] == true) {
-        setState(() {
-          _avatarUrl = data['avatarUrl'];
-        });
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Photo updated')));
+          setState(() {
+            _avatarUrl = data['avatarUrl'] ?? _avatarUrl;
+          });
         }
+        _toast('Photo updated');
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['error'] ?? 'Upload failed')),
-          );
-        }
+        if (mounted) setState(() => _pickedImageBytes = previousBytes);
+        _toast((data['error'] ?? 'Could not upload your photo. Please try again.').toString());
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+    } catch (_) {
+      if (mounted) setState(() => _pickedImageBytes = previousBytes);
+      _toast('Could not upload your photo. Please try again.');
     } finally {
       if (mounted) {
         setState(() {
@@ -137,15 +140,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ).showSnackBar(const SnackBar(content: Text('Profile updated')));
           Navigator.of(context).pop();
         }
-      } else {
+      } else if (mounted) {
         setState(() {
-          _error = data['error'] ?? 'Failed to save';
+          _error = (data['error'] ?? 'Could not save your changes.').toString();
         });
       }
-    } catch (e) {
-      setState(() {
-        _error = 'Error: $e';
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _error = 'Could not save your changes. Please try again.';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -177,6 +182,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ? Center(
               child: CircularProgressIndicator(color: AppColors.primary),
             )
+          : _loadFailed
+          ? ErrorView(message: _loadError, onRetry: _fetchProfile)
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(

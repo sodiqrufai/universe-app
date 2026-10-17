@@ -10,11 +10,11 @@ import 'server_status.dart';
 /// `'Error: $e'` show something a student can understand.
 class ResilientHttpException extends http.ClientException {
   ResilientHttpException(
-    String message,
-    Uri? uri, {
+    super.message,
+    super.uri, {
     this.timedOut = false,
     this.offline = false,
-  }) : super(message, uri);
+  });
 
   /// The request ran out of time (no response within the timeout).
   final bool timedOut;
@@ -54,8 +54,10 @@ class ResilientClient extends http.BaseClient {
     this.backoff = const [Duration(milliseconds: 800), Duration(seconds: 2)],
     bool Function()? isOffline,
     Future<void> Function(Duration)? sleep,
-  })  : _inner = inner,
+  })  // ignore: prefer_initializing_formals
+      : _inner = inner,
         _status = status ?? ServerStatus.instance,
+        // ignore: prefer_initializing_formals
         _isOffline = isOffline,
         _sleep = sleep ?? ((Duration d) => Future<void>.delayed(d));
 

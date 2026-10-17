@@ -85,7 +85,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
           'description': _descController.text.trim(),
           'price': _priceController.text.trim(),
           'condition': _condition,
-          if (_selectedCategoryId != null) 'categoryId': _selectedCategoryId!,
+          'categoryId': ?_selectedCategoryId,
         },
         files: [
           for (final image in _images)

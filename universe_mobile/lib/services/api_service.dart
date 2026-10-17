@@ -235,7 +235,7 @@ class ApiService {
     return {
       'success': false,
       'error': error,
-      if (statusCode != null) 'statusCode': statusCode,
+      'statusCode': ?statusCode,
       if (networkError) 'networkError': true,
       if (timedOut) 'timedOut': true,
       if (rateLimited) 'rateLimited': true,

@@ -310,11 +310,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     if (files.isEmpty) return;
     final pickedFile = files.first;
 
-    // Check type and size BEFORE reading the file or asking for a title:
+    // Read the file, then check type and size BEFORE asking for a title:
     // "That file is 14MB. The limit is 10MB."
+    final Uint8List fileBytes;
+    try {
+      fileBytes = await pickedFile.readAsBytes();
+    } catch (_) {
+      _toast("Couldn't read that file. Please try another one.");
+      return;
+    }
     final problem = UploadRules.validate(
       fileName: pickedFile.name,
-      sizeBytes: pickedFile.size,
+      sizeBytes: fileBytes.length,
       allowed: const [UploadKind.document],
     );
     if (problem != null) {
@@ -381,13 +388,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     titleController.dispose();
     if (confirmed != true || !mounted) return;
 
-    final Uint8List fileBytes;
-    try {
-      fileBytes = await pickedFile.readAsBytes();
-    } catch (_) {
-      _toast("Couldn't read that file. Please try another one.");
-      return;
-    }
     await _sendResource(title, type, pickedFile, fileBytes);
   }
 

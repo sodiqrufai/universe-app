@@ -91,7 +91,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           'description': _descController.text.trim(),
           'price': _priceType == 'negotiable' ? '' : _priceController.text.trim(),
           'priceType': _priceType,
-          if (_selectedCategoryId != null) 'categoryId': _selectedCategoryId!,
+          'categoryId': ?_selectedCategoryId,
         },
         files: [
           for (final image in _images)

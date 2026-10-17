@@ -259,7 +259,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> with WidgetsBinding
           if (attachment != null && isAudio && durationSeconds != null)
             'durationSeconds': durationSeconds.toString(),
         },
-        files: [if (attachment != null) attachment],
+        files: [?attachment],
       );
 
       if (data['success'] == true) {

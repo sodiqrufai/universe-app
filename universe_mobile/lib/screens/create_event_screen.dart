@@ -109,7 +109,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
           'description': _descController.text.trim(),
           'location': _locationController.text.trim(),
           'startsAt': _startsAt!.toUtc().toIso8601String(),
-          if (_selectedCategoryId != null) 'categoryId': _selectedCategoryId!,
+          'categoryId': ?_selectedCategoryId,
         },
         files: [
           if (_coverBytes != null)

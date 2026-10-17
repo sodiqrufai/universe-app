@@ -46,6 +46,12 @@ dependencies:
   just_audio: ^0.9.42
   path_provider: ^2.1.5
   cached_network_image: ^3.4.1
+  # --- Added by B1 (networking / monitoring). Version ranges are deliberately
+  # wide because they could not be checked against pub.dev from the sandbox:
+  # `flutter pub get` will pick the newest one that fits your Flutter version.
+  connectivity_plus: '>=6.1.0 <9.0.0'
+  package_info_plus: '>=8.0.0 <11.0.0'
+  sentry_flutter: '>=9.0.0 <11.0.0'
 
 dev_dependencies:
   flutter_test:

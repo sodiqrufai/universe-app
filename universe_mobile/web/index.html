@@ -18,7 +18,22 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="UniVerse — one app, every student. Housing, marketplace, services, and campus life for Nigerian university students.">
+  <meta name="description" content="UniVerse — one app, every student. Campus feed, marketplace, services, events and messaging for Nigerian university students.">
+
+  <!--
+    Faster first load on a cold server: open the connections the app will need
+    right away, and send a tiny request to wake the backend (Render's free tier
+    sleeps) while the browser is still downloading the app itself. The URL must
+    match lib/config/api_config.dart. The reply is ignored.
+  -->
+  <link rel="preconnect" href="https://universe-app-w4cc.onrender.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <script>
+    try {
+      fetch('https://universe-app-w4cc.onrender.com/health', { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
+    } catch (e) {}
+  </script>
 
   <!-- iOS meta tags & icons -->
   <meta name="theme-color" content="#4F2CCF">
@@ -34,6 +49,54 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
+    /* Branded loading screen, shown until Flutter paints its first frame. */
+    html, body { margin: 0; background: #2D1B8C; }
+    #uv-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 24px;
+      text-align: center;
+      background: linear-gradient(160deg, #4F2CCF 0%, #2D1B8C 100%);
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      transition: opacity 0.3s ease;
+    }
+    #uv-loader.uv-hide { opacity: 0; pointer-events: none; }
+    #uv-loader img {
+      width: 96px;
+      height: 96px;
+      border-radius: 24px;
+      box-shadow: 0 0 48px rgba(255, 255, 255, 0.18);
+    }
+    #uv-loader .uv-name { font-size: 30px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+    #uv-spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: uv-spin 0.9s linear infinite;
+    }
+    #uv-loader .uv-note {
+      min-height: 40px;
+      max-width: 280px;
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.45;
+      color: #E4DEFF;
+    }
+    @keyframes uv-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      #uv-spinner { animation-duration: 3s; }
+      #uv-loader { transition: none; }
+    }
+
     #install-banner {
       display: none;
       position: fixed;
@@ -95,6 +158,42 @@
   </style>
 </head>
 <body>
+  <div id="uv-loader" role="status" aria-live="polite">
+    <img src="icons/Icon-192.png" alt="">
+    <p class="uv-name">UniVerse</p>
+    <div id="uv-spinner" aria-hidden="true"></div>
+    <p class="uv-note" id="uv-note">Loading…</p>
+  </div>
+  <noscript>
+    <p style="position:fixed;inset:0;z-index:10001;margin:0;padding:24px;display:flex;align-items:center;justify-content:center;text-align:center;background:#2D1B8C;color:#fff;font-family:sans-serif;">
+      UniVerse needs JavaScript. Please turn it on and reload.
+    </p>
+  </noscript>
+  <script>
+    (function () {
+      var loader = document.getElementById('uv-loader');
+      var note = document.getElementById('uv-note');
+      var timers = [];
+
+      // After ~8 s tell people why it is slow instead of leaving a silent spinner.
+      timers.push(setTimeout(function () {
+        note.textContent = 'Waking up UniVerse… this can take up to a minute the first time.';
+      }, 8000));
+      timers.push(setTimeout(function () {
+        note.textContent = 'Still working. If nothing happens, check your internet connection and refresh the page.';
+      }, 45000));
+
+      function hide() {
+        timers.forEach(clearTimeout);
+        loader.classList.add('uv-hide');
+        setTimeout(function () { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 400);
+      }
+
+      // Flutter fires this on window when its first frame has been painted.
+      window.addEventListener('flutter-first-frame', hide);
+    })();
+  </script>
+
   <!--
     Custom install banner — Android/Chrome gets a real Install button
     (via the captured beforeinstallprompt event); iOS Safari never

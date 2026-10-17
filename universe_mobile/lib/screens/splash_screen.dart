@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/session_service.dart';
 import '../services/api_service.dart';
+import '../services/server_status.dart';
 import '../models/profile_setup_data.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
@@ -22,19 +23,52 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  /// True when the startup calls failed for a reason that is NOT "your login
+  /// is invalid" (no internet, server asleep/slow, server error). The user
+  /// stays signed in and gets a Retry button instead of being dumped on the
+  /// login screen or left with an endless spinner.
+  bool _failed = false;
+  String _failureMessage = '';
+
   @override
   void initState() {
     super.initState();
     _checkSessionAndNavigate();
   }
 
+  /// Network trouble or a server-side problem: worth retrying, and says
+  /// nothing about whether the saved login is still good.
+  bool _isTransient(Map<String, dynamic> result) {
+    final status = result['statusCode'];
+    return result['networkError'] == true ||
+        result['timedOut'] == true ||
+        result['rateLimited'] == true ||
+        (status is int && status >= 500);
+  }
+
+  void _showFailure(String message) {
+    if (!mounted) return;
+    setState(() {
+      _failed = true;
+      _failureMessage = message;
+    });
+  }
+
   Future<void> _checkSessionAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 2));
+    if (_failed) {
+      setState(() {
+        _failed = false;
+        _failureMessage = '';
+      });
+    }
+
+    // Keep the splash visible for at least 2 s while the real work runs.
+    final minimumSplash = Future<void>.delayed(const Duration(seconds: 2));
     final token = await SessionService.getToken();
 
-    if (!mounted) return;
-
     if (token == null) {
+      await minimumSplash;
+      if (!mounted) return;
       final seenOnboarding = await hasSeenOnboarding();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -50,20 +84,34 @@ class _SplashScreenState extends State<SplashScreen> {
         ApiService.get('/profile/me'),
         ApiService.get('/waitlist/status'),
       ]);
+      await minimumSplash;
       final data = results[0];
       final waitlistData = results[1];
+
+      if (!mounted) return;
+
+      // Couldn't get a real answer: keep the session, offer Retry.
+      if (_isTransient(data) || _isTransient(waitlistData)) {
+        final failed = _isTransient(data) ? data : waitlistData;
+        _showFailure(
+          (failed['error'] as String?) ??
+              "Couldn't reach UniVerse. Check your connection and try again.",
+        );
+        return;
+      }
+
       if (data['success'] == true) {
         final profile = data['profile'];
         final waitlist = waitlistData['success'] == true && waitlistData['waitlisted'] == true
             ? waitlistData
             : null;
 
-        if (!mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => _resolveResumeScreen(profile, waitlist)),
         );
       } else {
-        // Token invalid/expired even after refresh attempt.
+        // The server answered and rejected the login: token invalid/expired
+        // even after the refresh attempt.
         await SessionService.clear();
         if (mounted) {
           Navigator.of(context).pushReplacement(
@@ -71,13 +119,19 @@ class _SplashScreenState extends State<SplashScreen> {
           );
         }
       }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      }
+    } catch (_) {
+      // Unexpected failure (not a login problem). Don't sign the user out.
+      _showFailure("Something went wrong while starting UniVerse. Please try again.");
     }
+  }
+
+  /// Escape hatch on the failure screen: go to sign-in without clearing the
+  /// saved session, so a later launch can still resume.
+  void _goToLogin() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   /// Inspects the fetched profile in the same order as the onboarding
@@ -221,6 +275,8 @@ class _SplashScreenState extends State<SplashScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 32),
+                    _buildStatusArea(),
                   ],
                 ),
               ),
@@ -243,6 +299,70 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Space under the tagline: nothing normally, a "waking up" note when the
+  /// server is slow, and a message with Retry when startup failed.
+  Widget _buildStatusArea() {
+    if (_failed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _failureMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _checkSessionAndNavigate,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primaryDark,
+              ),
+              child: const Text('Try again'),
+            ),
+            TextButton(
+              onPressed: _goToLogin,
+              child: const Text(
+                'Go to sign in',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListenableBuilder(
+      listenable: ServerStatus.instance,
+      builder: (context, _) {
+        final waking = ServerStatus.instance.isWaking;
+        // Fixed height so the logo doesn't jump when the note appears.
+        return SizedBox(
+          height: 40,
+          child: waking
+              ? const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      'Waking up the server...',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                )
+              : null,
+        );
+      },
     );
   }
 

@@ -7,12 +7,12 @@ class SupportConfig {
   SupportConfig._();
 
   /// FOUNDER: your real support email address.
-  static const String email = 'support@universe.app';
+  static const String email = 'dee.king.institute@gmail.com';
 
   /// FOUNDER: your WhatsApp number in international format, digits only,
   /// no "+" or spaces. Example for a Nigerian number: 2348012345678.
   /// Leave as an empty string to hide the WhatsApp option.
-  static const String whatsapp = '';
+  static const String whatsapp = '2349151483959';
 
   /// Pre-filled first message when a student opens WhatsApp.
   static const String whatsappGreeting = 'Hi UniVerse, I need help with...';
